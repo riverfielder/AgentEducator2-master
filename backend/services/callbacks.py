@@ -153,3 +153,15 @@ class StatusNotifier:
             "stage": "question_analysis", 
             "message": "思考中..."
         }))
+    
+    def notify_search_start(self):
+        """通知搜索开始"""
+        self.queue.put(json.dumps({
+            "type": "status",
+            "stage": "search_start",
+            "message": "正在搜索相关资料..."
+        }))
+
+    def notify_complete(self):
+        """通知完成"""
+        self.queue.put(None)

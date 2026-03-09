@@ -21,19 +21,17 @@ class LangSmithConfig:
             endpoint: LangSmith端点
             enable_tracing: 是否启用追踪
         """
-        if enable_tracing:
+        # 检查API密钥是否存在
+        has_api_key = bool(api_key or os.environ.get("LANGSMITH_API_KEY"))
+        
+        if enable_tracing and has_api_key:
             os.environ["LANGSMITH_TRACING"] = "true"
             os.environ["LANGSMITH_ENDPOINT"] = endpoint
             os.environ["LANGSMITH_PROJECT"] = project_name
             
-            # API密钥优先级：参数 > 环境变量 > 默认值
+            # API密钥优先级：参数 > 环境变量
             if api_key:
                 os.environ["LANGSMITH_API_KEY"] = api_key
-            elif not os.environ.get("LANGSMITH_API_KEY"):
-                # 开发环境默认密钥，生产环境请通过环境变量设置
-                default_key = os.environ.get("LANGSMITH_API_KEY", "")
-                os.environ["LANGSMITH_API_KEY"] = default_key
-                print("[WARNING] 未设置LangSmith API密钥，请设置LANGSMITH_API_KEY环境变量")
             
             print(f"[INFO] LangSmith追踪已启用")
             print(f"  - 项目: {project_name}")
@@ -41,7 +39,10 @@ class LangSmithConfig:
         else:
             # 禁用追踪
             os.environ["LANGSMITH_TRACING"] = "false"
-            print("[INFO] LangSmith追踪已禁用")
+            if enable_tracing and not has_api_key:
+                print("[WARNING] 未检测到LangSmith API密钥，追踪功能将自动禁用。如需启用，请设置LANGSMITH_API_KEY环境变量。")
+            else:
+                print("[INFO] LangSmith追踪已禁用")
     
     @staticmethod
     def is_enabled() -> bool:

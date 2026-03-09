@@ -348,6 +348,14 @@
                         >
                           查看学习资源
                         </v-btn>
+                        <v-btn
+                          size="small"
+                          color="success"
+                          variant="flat"
+                          @click="router.push('/dynamic-training?keyword=' + path.title.replace('学习 ', ''))"
+                        >
+                          生成AI专项训练
+                        </v-btn>
                         <v-btn 
                           size="small" 
                           color="success" 

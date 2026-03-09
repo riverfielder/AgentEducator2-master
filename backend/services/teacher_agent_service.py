@@ -287,8 +287,20 @@ class TeacherAgentService:
                 'references_count': len(getattr(agent_executor, '_references', []))
             }
             
-            # TODO: 添加更多教师端特定的结果增强逻辑
-            # 例如：教学建议、学生洞察、课程分析等
+            # 生成简单的后续建议问题
+            qa_mode = result['teacher_metadata']['qa_mode']
+            suggestions = []
+            
+            if qa_mode == 'course_analysis':
+                suggestions = ["根据当前分析生成改进建议", "查看相关课程的对比数据", "生成本周教学报告"]
+            elif qa_mode == 'student_insights':
+                suggestions = ["生成针对该学生的辅导计划", "查看该学生的详细学习轨迹", "发送学习提醒"]
+            elif qa_mode == 'content_analysis':
+                suggestions = ["生成相关知识点的习题", "优化该知识点的讲解方式", "查看学生对该知识点的掌握情况"]
+            else:
+                suggestions = ["分析相关的教学案例", "生成教学反思", "查看课程进度统计"]
+                
+            result['suggested_questions'] = suggestions
             
             return result
             

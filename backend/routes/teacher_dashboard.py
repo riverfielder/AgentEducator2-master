@@ -48,11 +48,11 @@ def get_course_schedule():
                 start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
                 end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
                 # 这里可以根据课程的开始和结束时间进行过滤
-                # 由于数据库中没有明确的课程时间字段，我们使用创建时间作为示例
+                # 使用排课时间过滤，如果未设置排课时间则使用创建时间
                 courses_query = courses_query.filter(
-                    and_(
-                        Course.create_time >= start_dt,
-                        Course.create_time <= end_dt
+                    or_(
+                        and_(Course.schedule_start_time.isnot(None), Course.schedule_start_time >= start_dt, Course.schedule_start_time <= end_dt),
+                        and_(Course.schedule_start_time.is_(None), Course.create_time >= start_dt, Course.create_time <= end_dt)
                     )
                 )
             except ValueError:
@@ -79,14 +79,16 @@ def get_course_schedule():
                 'completed': '#9E9E9E'   # 灰色 - 已结束
             }
             
-            # 生成课程事件（这里可以根据实际的课程时间表调整）
-            # 目前使用模拟数据，实际应用中应该有具体的上课时间
+            # 使用真实的排课时间
+            start_time = course.schedule_start_time or course.create_time
+            end_time = course.schedule_end_time or (start_time + timedelta(hours=2))
+            
             event = {
                 'id': str(course.id),
                 'title': course.name,
                 'description': course.description or '',
-                'start': course.create_time.isoformat(),
-                'end': (course.create_time + timedelta(hours=2)).isoformat(),  # 假设每节课2小时
+                'start': start_time.isoformat(),
+                'end': end_time.isoformat(),
                 'color': color_map.get(course.status, '#757575'),
                 'status': course.status,
                 'teacher': course.teacher.username if course.teacher else '未分配',

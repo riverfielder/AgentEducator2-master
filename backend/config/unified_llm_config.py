@@ -80,7 +80,7 @@ class UnifiedLLMConfig:
         
         # 知识图谱相关模型
         self._models["knowledge_graph_analysis"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -93,7 +93,7 @@ class UnifiedLLMConfig:
         
         
         self._models["knowledge_graph_build"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -106,7 +106,7 @@ class UnifiedLLMConfig:
         
         # 文档和视频处理模型
         self._models["document_processor"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -118,7 +118,7 @@ class UnifiedLLMConfig:
         )
         
         self._models["video_processor"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -131,7 +131,7 @@ class UnifiedLLMConfig:
         
         # QA和聊天模型
         self._models["qa_main"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -143,7 +143,7 @@ class UnifiedLLMConfig:
         )
         
         self._models["question_import"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -155,7 +155,7 @@ class UnifiedLLMConfig:
         )
         
         self._models["general"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -167,7 +167,7 @@ class UnifiedLLMConfig:
         )
         
         self._models["general_lite"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={
@@ -178,7 +178,7 @@ class UnifiedLLMConfig:
             description="通用轻型模型"
         )
         self._models["general_lite_20"] = LLMModelConfig(
-            model_name="doubao-seed-1-6-flash-250615",
+            model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,
             endpoint_key="volcengine_doubao",
             default_params={

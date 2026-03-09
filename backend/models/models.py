@@ -63,6 +63,11 @@ class Course(db.Model):
     image_url = db.Column(db.String(255))
     start_date = db.Column(db.BigInteger, nullable=False, comment='课程开始日期(时间戳)')
     end_date = db.Column(db.BigInteger, nullable=False, comment='课程结束日期(时间戳)')
+    
+    # 排课时间字段
+    schedule_start_time = db.Column(db.DateTime, nullable=True, comment='排课开始时间')
+    schedule_end_time = db.Column(db.DateTime, nullable=True, comment='排课结束时间')
+    
     hours = db.Column(db.Integer, nullable=False)
     student_count = db.Column(db.Integer, default=0)
     status = db.Column(db.Integer, nullable=False, comment='课程状态: 0=upcoming, 1=active, 2=completed')  # 从字符串改为整数

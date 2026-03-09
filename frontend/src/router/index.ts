@@ -16,6 +16,7 @@ import AIAssistant from "../views/AIAssistant.vue"
 import StudentManagement from '../views/teacherViews/StudentManagement.vue';
 import TaskMonitor from '../views/teacherViews/TaskMonitor.vue';
 import PersonalizedRecommend from '../views/PersonalizedRecommend.vue'
+import DynamicTraining from '../views/DynamicTraining.vue'
 import Statistics from '../views/teacherViews/Statistics.vue';
 import AllCourses from '../views/AllCourses.vue';
 import TeacherLayout from '../layouts/TeacherLayout.vue';

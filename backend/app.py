@@ -1,4 +1,7 @@
 from flask import Flask, send_from_directory
+from dotenv import load_dotenv # type: ignore
+load_dotenv() # Load environment variables before importing config
+
 from models.models import db  # Import db from models
 import os
 # 导入 OpenMP 冲突修复
@@ -10,10 +13,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 # 导入新的路由模块
 from routes.task_logs import task_logs_bp
-from dotenv import load_dotenv # type: ignore
 
-
-load_dotenv()
 def create_app(config_name='development'):
     app = Flask(__name__)
     app.url_map.strict_slashes = False  
@@ -70,6 +70,7 @@ def create_app(config_name='development'):
     from routes.question_bank import bp as question_bank_bp  # 导入题库蓝图
     from routes.global_search import global_search_bp  # 导入全局搜索蓝图
     from routes.personalized_recommendation import personalized_recommendation_bp  # 导入个性化推荐蓝图
+    from routes.training import training_bp # 导入动态专项训练卷蓝图
 
     
     # 添加静态文件路由，支持环境变量配置上传路径
@@ -124,6 +125,7 @@ def create_app(config_name='development'):
     app.register_blueprint(question_bank_bp)  # 注册题库相关接口
     app.register_blueprint(global_search_bp)  # 注册全局搜索相关接口
     app.register_blueprint(personalized_recommendation_bp)  # 注册个性化推荐相关接口
+    app.register_blueprint(training_bp, url_prefix='/api/training') # 注册专项训练卷相关接口
 
 
     # 添加静态文件路由，用于访问上传的图片# 初始化视频处理线程池

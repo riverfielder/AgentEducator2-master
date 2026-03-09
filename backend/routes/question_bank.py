@@ -279,9 +279,66 @@ def update_question(question_id):
 @bp.route('/import', methods=['POST'])
 @token_required
 def import_questions():
-    # file = request.files['file']
-    # TODO: 调用AI分析word/pdf并入库
-    return jsonify({'msg': '批量导入接口预留，待实现AI分析'})
+    """
+    保存导入的题目数据
+    接收经过AI解析和用户确认后的题目列表
+    """
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, list):
+             return jsonify({'msg': '无效的数据格式，需要题目列表'}), 400
+             
+        saved_count = 0
+        user_id = request.current_user.get('user_id')
+        
+        for item in data:
+            # 基础校验
+            content = item.get('content')
+            q_type = item.get('question_type')
+            
+            if not content or not q_type:
+                continue
+                
+            # 处理选项
+            options = item.get('options')
+            if options and isinstance(options, list):
+                options_json = json.dumps(options)
+            else:
+                options_json = None
+                
+            # 处理答案
+            answer = item.get('answer')
+            
+            # 创建题目
+            question = Question(
+                content=content,
+                type=q_type,
+                options=options_json,
+                answers=str(answer) if answer is not None else None,
+                explanation=item.get('explanation', ''),
+                difficulty=item.get('difficulty', 'medium'),
+                course_id=item.get('course_id'), # 可选
+                creator_id=user_id,
+                created_at=datetime.now(),
+                update_time=datetime.now()
+            )
+            
+            db.session.add(question)
+            saved_count += 1
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'msg': f'成功导入 {saved_count} 道题目',
+            'count': saved_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"导入题目失败: {str(e)}")
+        return jsonify({'msg': f'导入失败: {str(e)}'}), 500
+
 
 @bp.route('/import/preview', methods=['POST'])
 @token_required

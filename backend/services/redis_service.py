@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class RedisService:
     """Redis缓存服务类"""
     
-    def __init__(self, host: str = 'localhost', port: int = 6379, password: str = 'redis_sDRdrC', db: int = 0):
+    def __init__(self, host: str = 'localhost', port: int = 6379, password: str = None, db: int = 0):
         """
         初始化Redis连接
         
@@ -35,17 +35,23 @@ class RedisService:
                 password=password,
                 db=db,
                 decode_responses=False,  # 使用二进制模式以支持pickle
-                socket_timeout=5,
-                socket_connect_timeout=5,
-                retry_on_timeout=True,
+                socket_timeout=2,
+                socket_connect_timeout=2,
+                retry_on_timeout=False,
                 health_check_interval=30
             )
             
             # 测试连接
-            self.redis_client.ping()
-            logger.info(f"Redis连接成功: {host}:{port}")
+            try:
+                self.redis_client.ping()
+                logger.info(f"Redis连接成功: {host}:{port}")
+            except Exception as ping_error:
+                # Ping失败也视为连接失败，降级到内存模式
+                raise ping_error
             
         except Exception as e:
+            # 打印详细错误信息到控制台，确保看到
+            print(f"[RedisService] Redis连接失败，切换到内存模式: {str(e)}")
             logger.error(f"Redis连接失败: {str(e)}")
             # 使用内存字典作为降级方案
             self.redis_client = None
@@ -93,23 +99,20 @@ class RedisService:
             是否设置成功
         """
         try:
-            if self.redis_client is not None:
-                serialized_value = self._serialize_value(value)
-                if expire_seconds:
-                    return self.redis_client.setex(key, expire_seconds, serialized_value)
-                else:
-                    return self.redis_client.set(key, serialized_value)
+            serialized_value = self._serialize_value(value)
+            
+            if self.redis_client:
+                return self.redis_client.set(key, serialized_value, ex=expire_seconds)
             else:
-                # 降级到内存缓存
                 self._memory_cache[key] = {
                     'value': value,
-                    'expire_time': datetime.now() + timedelta(seconds=expire_seconds) if expire_seconds else None
+                    'expire_at': datetime.now() + timedelta(seconds=expire_seconds) if expire_seconds else None
                 }
                 return True
         except Exception as e:
-            logger.error(f"Redis设置失败 {key}: {str(e)}")
+            logger.error(f"设置缓存失败: {str(e)}")
             return False
-    
+
     def get(self, key: str) -> Any:
         """
         获取缓存值
@@ -118,30 +121,29 @@ class RedisService:
             key: 缓存键
             
         Returns:
-            缓存值，不存在则返回None
+            缓存值，如果不存在则返回None
         """
         try:
-            if self.redis_client is not None:
+            if self.redis_client:
                 value = self.redis_client.get(key)
-                if value is not None:
+                if value:
                     return self._deserialize_value(value)
                 return None
             else:
-                # 降级到内存缓存
-                cache_item = self._memory_cache.get(key)
-                if cache_item is None:
+                item = self._memory_cache.get(key)
+                if not item:
                     return None
                 
-                # 检查是否过期
-                if cache_item['expire_time'] and datetime.now() > cache_item['expire_time']:
+                if item['expire_at'] and datetime.now() > item['expire_at']:
                     del self._memory_cache[key]
                     return None
                 
-                return cache_item['value']
+                return item['value']
         except Exception as e:
-            logger.error(f"Redis获取失败 {key}: {str(e)}")
+            logger.error(f"获取缓存失败: {str(e)}")
             return None
-    
+
+
     def delete(self, key: str) -> bool:
         """
         删除缓存

@@ -110,14 +110,18 @@ def verify_token():
 def token_required(f):
     """需要token的装饰器"""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated_function(*args, **kwargs):
         payload = verify_token()
         if not payload:
             return jsonify(Result.error(401, "未授权，请登录")), 401
         
         # 将用户信息添加到request对象
         request.user = payload
+        # 为了兼容性，也设置current_user
+        request.current_user = payload
         return f(*args, **kwargs)
+    return decorated_function
+
     
     return decorated
 

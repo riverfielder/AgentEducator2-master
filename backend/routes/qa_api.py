@@ -11,6 +11,7 @@ from services.course_access_service import course_access_service
 from services.streaming_service import streaming_service
 from services.cache_service import get_video_info
 from services.qa_chain_service import qa_chain_service
+from services.redis_service import redis_service  # 引入Redis服务
 from config.agent_config import AgentConfig
 
 qa_bp = Blueprint('qa', __name__)
@@ -187,22 +188,29 @@ def _handle_agent_mode(request_data, start_time):
 
 def _store_contexts_for_session(session_id, video_contexts, course_contexts, document_contexts):
     """为session存储contexts，供后续使用"""
-    # 这里可以使用Redis、内存缓存或其他方式存储
-    # 为了简单起见，我们使用一个简单的内存字典
-    if not hasattr(_store_contexts_for_session, 'contexts_cache'):
-        _store_contexts_for_session.contexts_cache = {}
-    
-    _store_contexts_for_session.contexts_cache[str(session_id)] = {
-        'video_contexts': video_contexts,
-        'course_contexts': course_contexts,
-        'document_contexts': document_contexts
-    }
+    # 使用Redis存储上下文，设置过期时间为1小时
+    try:
+        context_data = {
+            'video_contexts': video_contexts,
+            'course_contexts': course_contexts,
+            'document_contexts': document_contexts
+        }
+        # redis_service会自动处理序列化
+        redis_service.set(f"session_context:{session_id}", context_data, expire_seconds=3600)
+    except Exception as e:
+        current_app.logger.error(f"存储上下文失败: {str(e)}")
+        # 降级处理：仅打印错误，不影响主流程，但流式生成可能缺少上下文
 
 
 def get_contexts_for_session(session_id):
     """获取session的contexts"""
-    if hasattr(_store_contexts_for_session, 'contexts_cache'):
-        return _store_contexts_for_session.contexts_cache.get(str(session_id), {})
+    try:
+        context_data = redis_service.get(f"session_context:{session_id}")
+        if context_data:
+            return context_data
+    except Exception as e:
+        current_app.logger.error(f"获取上下文失败: {str(e)}")
+    
     return {}
 
 

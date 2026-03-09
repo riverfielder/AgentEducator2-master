@@ -11,7 +11,7 @@ class LLMConfig:
     
     QA_API_BASE = "https://ark.cn-beijing.volces.com/api/v3"
     QA_API_KEY = "373f1f5b-095e-469d-aa93-9319407b8e0f"
-    QA_MODEL = "doubao-seed-1-6-250615"
+    QA_MODEL = "doubao-seed-1-8-251228"
     
     @classmethod
     def get_api_key(cls) -> str:

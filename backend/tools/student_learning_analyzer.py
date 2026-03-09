@@ -14,6 +14,7 @@ from models.models import (
     Video, Document, Question, Assignment, Course
 )
 from services.mastery_calculator import MasteryCalculator
+from services.personalized_recommendation_service import personalized_recommendation_service
 # from services.llm_service import LLMService  # 已移除LLM依赖
 from .base_tool import BaseTool
 from .permission_utils import get_user_role, filter_courses_by_permission
@@ -148,6 +149,10 @@ class StudentLearningAnalyzer(BaseTool):
             # 3. 学习建议（基于数据分析）
             if analysis_result.get('learning_suggestions'):
                 result_text += f"\n3. 学习建议：\n{analysis_result['learning_suggestions']}\n"
+                
+            # 4. 技能缺口和补充任务推荐
+            if analysis_result.get('skill_gaps_and_recommendations'):
+                result_text += f"\n4. 技能缺口与推荐任务：\n{analysis_result['skill_gaps_and_recommendations']}\n"
             
             # 通知工具执行结果
             self._notify_tool_result({
@@ -186,12 +191,15 @@ class StudentLearningAnalyzer(BaseTool):
             strongest_points, weakest_points = self._analyze_knowledge_points(user_id)
             print(f"[FLOW] 分析知识点完成: strongest={len(strongest_points)}, weakest={len(weakest_points)}")
             
+            # 获取技能缺口和推荐 (个性化学习路径)
+            skill_gaps_str = self._get_skill_gaps_and_recommendations(user_id)
 
             result = {
                 'mastery_overview': mastery_overview,
                 'learning_progress': progress_data,
                 'strongest_points': strongest_points,
                 'weakest_points': weakest_points,
+                'skill_gaps_and_recommendations': skill_gaps_str
             }
             
             print(f"[FLOW] _analyze_learning_status 完成，返回结果: {type(result)}")
@@ -306,6 +314,55 @@ class StudentLearningAnalyzer(BaseTool):
         except Exception as e:
             logger.error(f'分析知识点强弱失败: {str(e)}')
             raise
+            
+    def _get_skill_gaps_and_recommendations(self, user_id: str) -> str:
+        """获取技能缺口和任务推荐"""
+        try:
+            # 获取个性化学习路径推荐
+            # 设置force_refresh=False以使用缓存(如果有)
+            recommendations_data = personalized_recommendation_service.get_personalized_learning_path(
+                user_id=user_id, limit=3, force_refresh=False
+            )
+            
+            if not recommendations_data or not recommendations_data.get('learning_path_recommendations'):
+                return "暂无足够的学习数据来分析技能缺口和生成推荐。建议学生多完成一些练习和视频学习。"
+                
+            recommendations = recommendations_data['learning_path_recommendations']
+            
+            result_str = ""
+            for i, rec in enumerate(recommendations, 1):
+                # source_keyword是已掌握的，recommended_keyword是需要学习的(技能缺口)
+                source_name = rec.get('source_keyword_name', '基础知识')
+                target_name = rec.get('recommended_keyword_name', '新知识点')
+                reason = rec.get('recommendation_reason', '建议学习以完善知识体系')
+                
+                result_str += f"[{i}] 鉴于已掌握「{source_name}」，发现「{target_name}」方面存在技能缺口。\n"
+                result_str += f"    建议: {reason}\n"
+                
+                # 添加具体好处
+                benefits = rec.get('learning_benefits', [])
+                if benefits:
+                    result_str += f"    预期收益: {', '.join(benefits[:2])}\n"
+                    
+                # 检查可用资源
+                resources = rec.get('learning_resources', {})
+                if resources:
+                    res_str = []
+                    if resources.get('videos', 0) > 0:
+                        res_str.append(f"{resources['videos']}个视频")
+                    if resources.get('documents', 0) > 0:
+                        res_str.append(f"{resources['documents']}个文档")
+                    if resources.get('questions', 0) > 0:
+                        res_str.append(f"{resources['questions']}道练习")
+                        
+                    if res_str:
+                        result_str += f"    可用相关学习资源: {', '.join(res_str)}\n"
+            
+            return result_str
+            
+        except Exception as e:
+            logger.error(f'获取技能缺口和推荐失败: {str(e)}')
+            return f"获取推荐信息时出现问题: {str(e)}"
     
     def _generate_learning_advice(self, user_id: str,
                                 strongest_points: List[Dict],

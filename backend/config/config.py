@@ -68,8 +68,8 @@ class Config(RuntimeConfigMixin):
         'AGENT_VERBOSE': 'AGENT_VERBOSE',
     }
     
-    # 数据库配置 - 阿里云RDS MySQL（使用正确的外网地址）
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://wendao_manager:wendao_123@rm-bp1cbv056401an0hcso.mysql.rds.aliyuncs.com:3306/wendao_platform'
+    # 数据库配置 - 获取环境变量或使用默认值（开发环境优先使用环境变量）
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'mysql+pymysql://root:password@localhost:3306/agent_educator'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,  # 连接池预检查
