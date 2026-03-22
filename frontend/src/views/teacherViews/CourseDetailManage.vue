@@ -1191,7 +1191,7 @@ async function handleCoverUpload(event: Event) {
     if (response.data.code === 200) {
       // 获取相对路径并转换为完整URL
       const relativeUrl = response.data.data.imageUrl
-      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+      const baseURL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
       const fullUrl = relativeUrl.startsWith('http') ? relativeUrl : `${baseURL}${relativeUrl}`
       
       // 更新封面URL
@@ -1235,7 +1235,7 @@ async function saveVideoEdit() {
     if (editingResource.value.coverUrl) {
       // 如果是完整URL，提取相对路径部分
       let coverUrl = editingResource.value.coverUrl
-      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+      const baseURL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
       if (coverUrl.startsWith(baseURL)) {
         coverUrl = coverUrl.replace(baseURL, '')
       }
@@ -1328,7 +1328,7 @@ function getCoverUrlForEdit(coverUrl: string | null | undefined): string {
   if (coverUrl.startsWith('http')) return coverUrl
   
   // 如果是相对路径，添加后端服务器地址
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+  const baseURL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
   return `${baseURL}${coverUrl}`
 }
 

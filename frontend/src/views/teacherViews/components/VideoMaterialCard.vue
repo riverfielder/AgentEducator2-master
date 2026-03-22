@@ -215,7 +215,7 @@ function getCoverUrl(coverUrl: string | null | undefined): string {
   if (coverUrl.startsWith('http')) return coverUrl
   
   // 如果是相对路径，添加后端服务器地址
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+  const baseURL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
   return `${baseURL}${coverUrl}`
 }
 

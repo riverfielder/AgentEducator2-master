@@ -225,7 +225,7 @@ const pdfViewerUrl = computed(() => {
     console.warn('未找到认证token，预览可能失败')
     return ''
   }
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
   // 确保token正确编码
   const encodedToken = encodeURIComponent(token)
   const url = `${baseUrl}/api/documents/${props.document.id}/preview?token=${encodedToken}`
