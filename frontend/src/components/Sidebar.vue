@@ -77,6 +77,7 @@ const studentNavItems = [
   { id: 4, title: '知识图谱', icon: 'fas fa-mind-share', path: '/knowledge-map' },
   { id: 5, title: '作业', icon: 'mdi-clipboard-text', path: '/student-assignments' },
   { id: 6, title: '笔记本', icon: 'fas fa-notebook', path: '/notebook' },
+  { id: 7, title: '智能代码实训', icon: 'mdi-code-braces', path: '/code-training' },
 ];
 
 // 根据当前路由的布局类型确定显示哪个导航菜单
