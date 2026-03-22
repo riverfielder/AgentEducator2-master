@@ -71,6 +71,7 @@ def create_app(config_name='development'):
     from routes.global_search import global_search_bp  # 导入全局搜索蓝图
     from routes.personalized_recommendation import personalized_recommendation_bp  # 导入个性化推荐蓝图
     from routes.training import training_bp # 导入动态专项训练卷蓝图
+    from routes.code_training import code_training_bp # 导入代码实训/启发调试模块蓝图
 
     
     # 添加静态文件路由，支持环境变量配置上传路径
@@ -126,6 +127,7 @@ def create_app(config_name='development'):
     app.register_blueprint(global_search_bp)  # 注册全局搜索相关接口
     app.register_blueprint(personalized_recommendation_bp)  # 注册个性化推荐相关接口
     app.register_blueprint(training_bp, url_prefix='/api/training') # 注册专项训练卷相关接口
+    app.register_blueprint(code_training_bp, url_prefix='/api/code_training') # 注册代码指导模块接口
 
 
     # 添加静态文件路由，用于访问上传的图片# 初始化视频处理线程池
