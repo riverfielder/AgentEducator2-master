@@ -302,6 +302,13 @@ const router = createRouter({
         requiresAuth: false  // 暂时不需要认证，方便访问
       }
     },
+    // 代码训练营
+    {
+      path: '/code-training',
+      name: 'codeTraining',
+      component: () => import('../views/CodeTrainingWorkstation.vue'),
+      meta: { layout: 'default' }
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
