@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000'),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ apiClient.interceptors.response.use(
 
 // 创建专门用于文件上传的客户端，具有更长的超时时间
 export const uploadClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000'),
   timeout: 3000000, // 50分钟超时，专门用于大文件上传
   headers: {
     'Accept': 'application/json'
@@ -98,5 +98,12 @@ export const extractQuestionKeywords = (questionId: string) =>
 
 export const getExtractedKeywords = (questionId: string) =>
   apiClient.get(`/api/assignments/question/${questionId}/extract-keywords/result`);
+
+// 新增：代码训练营接口
+export const generateCodeTask = (keyword: string) => 
+  apiClient.post(`/api/code_training/generate_task`, { keyword });
+
+export const submitCodeReview = (payload: any) =>
+  apiClient.post(`/api/code_training/submit_review`, payload);
 
 export default apiClient;
