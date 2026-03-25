@@ -1,0 +1,47 @@
+flowchart TD
+    subgraph 表现层/前端 UI
+        V(Vue3 + Vite)
+        Pinia(Pinia 状态管理)
+        Router(Vue Router)
+        Editor(代码编辑器)
+        Player(视频播放组件)
+    end
+
+    subgraph 业务服务层/后端 Flask
+        Auth[认证与用户服务]
+        Course[课程与视频服务]
+        RAG[RAG 混合检索服务]
+        Code[代码 AST 分析服务]
+        LLM[LLM Agent 调度服务]
+        Async[后台异步转码队列]
+    end
+
+    subgraph 数据持久层
+        MySQL[(MySQL 结构化数据)]
+        Redis[(Redis 会话缓存)]
+        FAISS[(FAISS 向量索引)]
+    end
+
+    subgraph 基础设施层
+        Docker(Docker 容器编排)
+        Nginx(Nginx 反向代理)
+        OS(Linux 操作系统)
+    end
+
+    V <-->|REST API / SSE| Auth
+    V <--> Course
+    V <--> LLM
+    Editor <--> Code
+    Player <--> RAG
+
+    Auth <--> MySQL
+    Course <--> MySQL
+    RAG <--> FAISS
+    RAG <--> Redis
+    Code <--> LLM
+    LLM <--> Redis
+
+    Auth -.-> Nginx
+    Course -.-> Nginx
+    Nginx -.-> OS
+    Docker -.-> OS

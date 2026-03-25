@@ -1,0 +1,37 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "学生" as student
+actor "教师" as teacher
+
+rectangle "在线个性化学习系统" {
+  usecase "启发式代码提交与评测" as uc1
+  usecase "视频播放与AI智能问答" as uc2
+  usecase "个人信息维护" as uc3
+  usecase "查看学习路径" as uc4
+  usecase "课程与视频上传管理" as uc5
+  usecase "习题库管理" as uc6
+  usecase "学情监控与出题" as uc7
+  usecase "登录验证" as uc8
+}
+
+student --> uc1
+student --> uc2
+student --> uc3
+student --> uc4
+
+teacher --> uc5
+teacher --> uc6
+teacher --> uc7
+teacher --> uc3
+
+uc1 ..> uc8 : <<include>>
+uc2 ..> uc8 : <<include>>
+uc3 ..> uc8 : <<include>>
+uc4 ..> uc8 : <<include>>
+uc5 ..> uc8 : <<include>>
+uc6 ..> uc8 : <<include>>
+uc7 ..> uc8 : <<include>>
+
+@enduml

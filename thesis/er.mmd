@@ -1,0 +1,52 @@
+erDiagram
+    USER ||--o{ COURSE : "创建/管理"
+    USER ||--o{ CHATSESSION : "发起"
+    COURSE ||--o{ VIDEO : "包含"
+    VIDEO ||--o{ CHATSESSION : "关联问答"
+    CHATSESSION ||--o{ MESSAGE : "包含"
+    USER ||--o{ CODE_TASK_RECORD : "提交尝试"
+    COURSE ||--o{ CODE_TASK_RECORD : "属于"
+
+    USER {
+        int id PK
+        string username
+        string email
+        string password_hash
+        enum role "student/teacher"
+    }
+    COURSE {
+        int id PK
+        string name
+        string description
+        int teacher_id FK
+    }
+    VIDEO {
+        int id PK
+        int course_id FK
+        string title
+        string video_url
+        text parsed_text
+        string vector_path
+    }
+    CHATSESSION {
+        string id PK
+        int user_id FK
+        int video_id FK "nullable"
+        datetime created_at
+    }
+    MESSAGE {
+        int id PK
+        string session_id FK
+        string role "user/assistant"
+        text content
+        json sources
+    }
+    CODE_TASK_RECORD {
+        int id PK
+        int user_id FK
+        int course_id FK
+        string task_type
+        int try_count
+        text submitted_code
+        int static_score
+    }

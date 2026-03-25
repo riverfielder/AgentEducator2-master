@@ -1,0 +1,34 @@
+sequenceDiagram
+    autonumber
+    actor Student as 学生前端
+    participant Backend as 评测子系统
+    participant AST as 静态分析器
+    participant LLM as 大语言模型服务
+
+    Student->>Backend: 提交修改后的代码与当前尝试次数
+    activate Backend
+    Backend->>AST: 发送代码进行语法树解析
+    activate AST
+    AST-->>Backend: 返回规范得分 Q_i 与代码缺陷报告 Report_ast
+    deactivate AST
+
+    alt 语法存在严重错误 (无法解析)
+        Backend-->>Student: 返回 status="KEEP_TRYING", 提示修复语法
+    else 语法正常
+        Backend->>Backend: 将 Report_ast 与约束规则封装为 Prompt P_i
+        
+        Backend->>LLM: 发送推理请求 LLM(P_i, θ)
+        activate LLM
+        LLM-->>Backend: 返回 JSON 格式结果 R_i
+        deactivate LLM
+        
+        Backend->>Backend: 校验 JSON 格式及限制条件
+        
+        alt 尝试次数 < 5 且大模型返回了答案
+            Backend->>Backend: 强制将 final_answer 置空
+        end
+        
+        Backend->>Backend: 记录日志并持久化入库
+        Backend-->>Student: 返回最终反馈 R_i (包含状态、启发提问、得分)
+    end
+    deactivate Backend

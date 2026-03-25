@@ -1,0 +1,67 @@
+@startuml
+skinparam linetype ortho
+
+entity "User (用户)" as user {
+  * id : INT <<PK>>
+  --
+  username : VARCHAR(50)
+  email : VARCHAR(100)
+  password_hash : VARCHAR(255)
+  role : ENUM(student, teacher)
+}
+
+entity "Course (课程)" as course {
+  * id : INT <<PK>>
+  --
+  name : VARCHAR(100)
+  description : TEXT
+  teacher_id : INT <<FK>>
+}
+
+entity "Video (视频)" as video {
+  * id : INT <<PK>>
+  --
+  course_id : INT <<FK>>
+  title : VARCHAR(100)
+  video_url : VARCHAR(255)
+  parsed_text : TEXT
+  vector_path : VARCHAR(255)
+}
+
+entity "ChatSession (问答会话)" as session {
+  * id : VARCHAR(36) <<PK>>
+  --
+  user_id : INT <<FK>>
+  video_id : INT <<FK>>
+  created_at : DATETIME
+}
+
+entity "Message (对话消息)" as message {
+  * id : INT <<PK>>
+  --
+  session_id : VARCHAR(36) <<FK>>
+  role : VARCHAR(20)
+  content : TEXT
+  sources : JSON
+}
+
+entity "CodeTaskRecord (代码评测记录)" as record {
+  * id : INT <<PK>>
+  --
+  user_id : INT <<FK>>
+  course_id : INT <<FK>>
+  task_type : VARCHAR(20)
+  try_count : INT
+  submitted_code : TEXT
+  static_score : INT
+}
+
+user ||--o{ course : "创建/管理"
+user ||--o{ session : "发起"
+course ||--o{ video : "包含"
+video ||--o{ session : "关联问答"
+session ||--o{ message : "包含"
+user ||--o{ record : "提交尝试"
+course ||--o{ record : "属于"
+
+@enduml

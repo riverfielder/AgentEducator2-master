@@ -56,7 +56,9 @@ backend/section_cache/**
 
 backend/data/**
 *.jpg
+!thesis/**/*.jpg
 *.png
+!thesis/**/*.png
 *.mp4
 *.pkl
 *.faiss

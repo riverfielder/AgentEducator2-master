@@ -1,0 +1,55 @@
+\documentclass[type = bachelor]{whu-thesis}
+
+\whusetup{
+  info = {
+    title      = {大模型辅助个性化学习系统设计与实现},
+    title*     = {Design and Implementation of Large Model Assisted Personalized Learning System},
+    department  = {计算机学院},
+    department* = {School of Computer Science},
+    author     = {黄鑫杰},
+    author*    = {Xinjie Huang},
+    student-id = {2022302111263},
+    supervisor  = {何璐璐},
+    supervisor* = {Lulu He},
+    academic-title  = {教授},
+    academic-title* = {Prof},
+    major   = {软件工程},
+    major*  = {Software Engineering},
+    year = 2026,
+    month = 5,
+    keywords  = {大语言模型, 检索增强生成, 个性化学习, 抽象语法树, 苏格拉底启发},
+    keywords* = {Large Language Model, RAG, Personalized Learning, AST, Socratic Tutoring},
+  },
+  style = {
+    font = termes,
+    math-font = termes,
+    cjk-font = fandol,
+    bib-backend = bibtex,
+    bib-resource = {ref/bachelor-refs.bib},
+    library = true,
+  }
+}
+\whumodule{algorithm2e}
+\usepackage{multirow}
+\begin{document}
+
+\tableofcontents % 目录
+
+\mainmatter
+
+\include{pages/chapter1.tex}
+\include{pages/chapter2.tex}
+\include{pages/chapter3.tex}
+\include{pages/chapter4.tex}
+\include{pages/chapter5.tex}
+\include{pages/chapter6.tex}
+\include{pages/chapter7.tex}
+
+\nocite{*}
+\printbibliography
+
+\begin{acknowledgements}
+  感谢指导老师在本次毕业设计过程中给予的悉心指导与帮助。感谢开源社区提供的大语言模型与相关技术框架，使得本系统的开发成为可能。最后，感谢评阅本论文的各位专家学者。
+\end{acknowledgements}
+
+\end{document}

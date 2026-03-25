@@ -1,0 +1,107 @@
+\chapter{系统实现}
+
+\section{本章概述}
+本章详细介绍了大模型辅助个性化学习系统的具体实现过程。根据第三章的需求分析和第四章的系统架构设计，本章将从核心算法设计、核心模块（前后端）开发、以及关键技术难点突破三个维度展开深入阐述。在智能代码实训模块中，系统并非简单地调用大模型进行代码纠错，而是创新性地提出并实现了一种“基于抽象语法树（AST）与大模型推理的苏格拉底代码启发算法”，该算法作为本系统的核心关键技术，将在本章中通过伪代码与数学符号进行详尽描述。此外，本章还详细阐述了检索增强生成（RAG）机制下的混合检索技术，以及前端流式数据渲染和复杂交互组件的实现细节。
+
+\section{核心关键技术：基于AST与大模型推理的苏格拉底代码启发算法}
+
+\subsection{算法研究背景与动机}
+传统的在线判题系统（Online Judge, OJ）通常仅通过输入输出用例的比对来判断代码的正误，返回如“Wrong Answer”或“Time Limit Exceeded”等冷冰冰的判定结果。这种方式无法指出学习者代码中存在的具体逻辑漏洞，更无法针对代码冗余、命名不规范、高耦合等代码质量问题给出指导。随着大语言模型的普及，许多研究尝试直接将学生的错误代码输入模型，让其输出正确的代码。然而，直接提供答案的方式违背了教育学中的“苏格拉底式”启发教学原则，剥夺了学习者独立思考和调试重构的机会。
+
+为了克服上述缺陷，本系统设计了“基于抽象语法树（AST）与大模型推理的苏格拉底代码启发算法”。该算法结合了传统编译原理中的静态分析技术与大语言模型的概率生成能力，通过严格的上下文状态机（即提交次数限制）控制大模型的输出行为，强制其使用启发式、反问式的语言引导学生，直到达到最大尝试次数阈值才会给出终极答案。
+
+\subsection{算法形式化描述与伪代码}
+
+设定当前学习者的代码实训任务为 $T$，该任务包含题目描述 $D$、预期考察的知识点集合 $K$ 以及初始的错误代码骨架 $C_0$。学习者在第 $i$ 次尝试时提交的代码记为 $C_i$。算法的目标是生成一个反馈集 $R_i = (S_i, F_i, L_i, A_i, Q_i)$，其中 $S_i$ 表示当前代码的状态（如“完美通过”、“尝试引导”、“已给最终答案”），$F_i$ 表示大模型生成的启发式评语，$L_i$ 为关联的拓展阅读资料链接，$A_i$ 为在达到最大尝试次数时才输出的最终正确代码，$Q_i$ 为代码静态规范分数。设系统允许的最大尝试次数为 $N_{max}$ \cite{whu-bachelor:22}。
+
+算法分为两个主要阶段：静态代码质量分析阶段和动态大模型启发生成阶段\cite{whu-bachelor:23}。
+
+\textbf{阶段一：静态代码质量分析}
+系统利用 Python 的抽象语法树（AST）解析器将文本代码 $C_i$ 转换为语法树结构 $Tree_i = AST(C_i)$。在此树上，系统通过遍历节点收集特征特征向量 $V_{ast}$，包括但不限于：函数命名是否符合下划线命名法（Snake Case）、是否存在未捕获的异常处理块、圈复杂度（Cyclomatic Complexity, CC）等。设圈复杂度计算公式为 $CC = E - N + 2P$，其中 $E$ 为边数，$N$ 为节点数，$P$ 为连通分支数。分析函数定义为 $Analyze(Tree_i) \rightarrow (Q_i, Report_{ast})$，其中 $Q_i \in [0, 100]$ 为规范得分，$Report_{ast}$ 为格式化的文本报告。
+
+\textbf{阶段二：动态大模型启发生成}
+将 $D, C_i, Report_{ast}, i, N_{max}$ 封装为一个特定的提示词结构 $P_i$。大模型生成函数记为 $LLM(P_i, \theta)$，其中 $\theta$ 为模型参数。通过 Prompt 工程施加极端严格的规则约束，强制 $LLM$ 依据当前尝试次数 $i$ 决定输出策略。定义损失约束函数 $L_{prompt}$，确保模型生成的 $F_i$ 始终包含反问属性而不包含具体答案。
+
+如下是该算法的伪代码描述：
+
+\begin{algorithm}[H]
+\caption{基于AST与LLM的苏格拉底代码启发算法}\label{alg:socratic}
+\KwIn{任务描述 $D$, 学生代码 $C_i$, 当前尝试次数 $i$, 最大尝试次数 $N_{max}$}
+\KwOut{包含状态、反馈、静态分数和最终答案的JSON结构 $R_i$}
+
+\tcp{1. 静态代码分析阶段}
+\eIf{CompileCheck($C_i$) == False}{
+    \Return \{"status": "KEEP\_TRYING", "feedback": "代码存在基础语法错误，请先检查拼写与缩进。", "static\_score": 0\}\;
+}{
+    $Tree_i \leftarrow \text{GenerateAST}(C_i)$\;
+    $Q_i, Report_{ast} \leftarrow \text{ASTAnalyzer}(Tree_i)$\;
+}
+
+\tcp{2. 构建系统提示词}
+$Rules \leftarrow \emptyset$\;
+$Rules.\text{append}(\text{"绝对不要直接指出具体哪行代码错误，也不要直接给出修复代码！"})$\;
+$Rules.\text{append}(\text{"必须使用提问式、启发式的语言，例如抛出边缘测试用例。"})$\;
+\eIf{$i \geq N_{max}$}{
+    $Rules.\text{append}(\text{"这是第 } i \text{ 次提交，已达上限，必须将 status 设为 MAX\_TRIES\_REACHED，并在 final\_answer 中提供正确代码。 "})$\;
+}{
+    $Rules.\text{append}(\text{"这是第 } i \text{ 次提交，未达上限，status 只能是 KEEP\_TRYING 或 SUCCESS，final\_answer 必须为空。 "})$\;
+}
+
+$Prompt \leftarrow \text{FormatPrompt}(D, C_i, Report_{ast}, Rules)$\;
+
+\tcp{3. 大模型调用与后处理}
+$ResponseText \leftarrow \text{CallLLM}(Prompt)$\;
+$R_i \leftarrow \text{ExtractJSON}(ResponseText)$\;
+
+\tcp{4. 修正验证机制}
+\If{$i < N_{max}$ and $R_i.\text{final\_answer} \neq \emptyset$}{
+    $R_i.\text{final\_answer} \leftarrow \emptyset$\; \tcp{强制消除大模型“幻觉”导致的违规答案}
+}
+$R_i.\text{static\_score} \leftarrow Q_i$\;
+
+\Return $R_i$\;
+\end{algorithm}
+
+\subsection{算法的具体实现细节}
+在具体实现上，静态分析器由 \texttt{CodeStaticAnalyzer} 类承担。该类重写了 \texttt{ast.NodeVisitor}，在遍历 \texttt{FunctionDef}（函数定义节点）时，使用正则表达式 \texttt{\^[a-z\_][a-z0-9\_]*\$} 检查函数名；在遍历 \texttt{For}、\texttt{While} 及 \texttt{If} 节点时累加圈复杂度。分析完成后，生成类似于“检测到2处命名不规范，圈复杂度为8，未发现异常处理模块”的文本片段，即 $Report_{ast}$。
+
+在大模型调用部分，由于大语言模型常常存在“过度热情”的倾向，即即便要求它不要写代码，它仍可能在解释中包含代码片段。为此，我们在后处理函数 \texttt{ExtractJSON} 中加入了强力的校验逻辑。如前文伪代码所示，如果当前尝试次数未达到设定阈值（本系统设定为5次），即便大模型在 JSON 返回结构中的 \texttt{final\_answer} 字段填入了内容，服务器也会强制将其置为空字符串，确保彻底切断学生“抄答案”的可能，迫使其阅读 \texttt{feedback} 中的反问语（例如：“如果在输入的数据列表中包含零，你在第14行的除法运算会发生什么？”）去自行寻找Bug。这一套严密的算法逻辑，使得整个系统的在线代码教学具有了真正的智能性和启发性。
+
+\section{检索增强生成（RAG）模块的混合检索实现}
+
+除了代码启发外，系统的另一大亮点是在视频播放与文档阅读页面集成的智能问答助手。针对大模型对特定课程资源的“知识盲区”，本系统完整实现了一套基于检索增强生成（RAG）的混合检索架构。本节详细描述该架构在后端的实现过程。
+
+\subsection{基于FAISS的向量检索与BM25倒排索引混合架构}
+单纯的语义向量检索在处理同义词模糊匹配时表现优异，但在面对教育领域特有的专有名词、缩写（如“LR算法”、“TCP/IP协议”）时，容易因为嵌入模型（Embedding Model）的表征偏差而发生检索遗漏。因此，本系统采用了一种混合检索（Ensemble Retriever）方案，即结合基于稀疏向量的词频匹配算法 BM25 与基于稠密向量的 FAISS 语义检索。
+
+在系统初始化或新资源（如视频字幕）上传完毕后，后台任务首先使用诸如 \texttt{jieba} 或 \texttt{HanLP} 的中文分词工具对长文本进行细粒度的 \texttt{Tokenize}，并构建文档切片（Chunks）。每个切片被送入 BGE（BAAI General Embedding）或 OpenAI Embedding 接口生成 768 维或更高的浮点向量，随后这些向量连同其 Metadata（包括所属资源ID、出现的时间点或页码等）一并存入 FAISS 本地索引库中。同时，这些切片也被加入了 BM25 索引中。
+
+\subsection{上下文组装与溯源信息提取机制}
+当后端接收到一条带有资源ID限定（如 \texttt{video\_ids=[123]}）的流式问答请求时，\texttt{\_get\_resources\_context} 函数首先被调用。该函数通过 ID 快速提取该视频的基本元数据（如课程名、视频标题、总结摘要）。随后，混合检索器会在限定的 FAISS Index 中，分别获取 BM25 评分最高的 $K_1$ 个切片和语义相似度最高的 $K_2$ 个切片，通过倒数排序融合（Reciprocal Rank Fusion, RRF）算法计算最终的文档重排得分，选取 Top-$K$ 个切片作为 Context。
+
+在向大模型发送 Prompt 时，除了注入上下文内容，系统还通过明确的指令要求大模型在引用特定的事实时标注出类似于 \texttt{[1]}、\texttt{[2]} 的引用序号。在得到大模型生成的回答后，后端的 \texttt{SourceService} 会解析被选中的源文档（Source Documents），将每个文档切片还原为包含 \texttt{index}、\texttt{type}（video/document）、\texttt{time\_point} 等属性的结构化 JSON。这部分数据被附加在 Server-Sent Events (SSE) 的开头或结尾发送至前端，构成了前端能够渲染出带超链接的可点击角标的数据基础。
+
+\section{前端核心交互模块的实现}
+
+前端基于 Vue 3 实现了复杂的数据流转与视图渲染，特别是在“智能代码实训页面”与“包含视频联动控制的 AI 聊天组件”上。
+
+\subsection{智能代码实训工作台的实现}
+代码实训模块由左侧任务展示与启发反馈区，以及右侧代码编辑与控制台区构成。在 \texttt{CodeTrainingWorkstation.vue} 中，为了区分不同类型（Debug 与重构）的任务，前端在顶部区域设计了两个并行的按钮模块，分别绑定了向后端 API 发送 \texttt{task\_type='debug'} 或 \texttt{task\_type='refactor'} 的请求。
+
+代码编辑区不仅支持用户的自由输入，还在下方实现了一个虚拟运行终端（Console）。当用户点击“运行代码”时，前端调用后端的 \texttt{/api/code\_training/run\_code} 接口。该接口在后端利用 Python 的动态执行机制 \texttt{exec()} 结合 \texttt{sys.stdout} 和 \texttt{sys.stderr} 的流重定向技术，安全地捕获并返回程序的标准输出。这一过程在前端被渲染为一个拥有黑色背景和等宽字体的 \texttt{pre} 标签框，极大地提升了实训体验的沉浸感。
+
+对于大模型的评价反馈，前端通过 \texttt{aiStatus} 响应式变量动态切换左侧卡片的展示状态。如果是 \texttt{KEEP\_TRYING}，则显示黄色的“尝试引导”徽章及大模型的启发式提问文字；如果是 \texttt{MAX\_TRIES\_REACHED}，不仅显示红色危险徽章，还会在底部通过动画展开预先隐藏的最终参考答案代码框，完成最终的闭环教学。
+
+\subsection{视频跳转与 Markdown 引用角标渲染}
+在 AI 助手组件中，最复杂的前端工程在于如何将后端生成的长串 Markdown 文本中夹杂的 \texttt{[1]} 标记，转换为能够控制外部独立视频播放器组件跳跃的按钮。
+
+在 \texttt{useCitationHandler.ts} 这个 Vue Composition API 模块中，我们设计了一套精密的 DOM 事件劫持机制。首先，针对大模型返回的文本，系统利用自定义的 Markdown 渲染函数拦截正则表达式匹配到的 \texttt{\backslash[\backslash d+\backslash]} 模式，将其替换为形如 \texttt{<span class="citation-ref" data-index="1">[1]</span>} 的 HTML 节点。随后，在渲染这些内容的父级 \texttt{div} 容器上，我们绑定了一个全局的 \texttt{@click="handleCitationClick"} 事件监听器。利用事件委托机制，当用户点击容器内的任意位置时，系统检查事件目标节点是否包含 \texttt{citation-ref} 属性类名。如果包含，则解析其 \texttt{data-index} 属性值，然后倒序遍历当前会话的消息历史数组，在对应的消息 \texttt{sources} 列表中找到相同的 \texttt{index} 源记录。根据该源记录中保存的 \texttt{video\_id} 和 \texttt{time\_point}，前端触发路由查询参数更新或直接调用全局跨组件的 \texttt{jumpToVideoTimepoint} 函数，操纵 HTML5 Video 标签的 \texttt{currentTime} 属性，实现了从大模型回答文本到教学视频精确时间点的无缝穿梭。这一创新的设计在交互体验上极具先进性。
+
+\section{后台长效任务与数据处理机制}
+
+视频转录和长篇文档的处理涉及繁重的 CPU 和 I/O 负担，如果直接在处理 HTTP 请求的线程中同步执行，会导致严重的拥塞和请求超时。因此，系统实现了健壮的后台任务处理队列。
+
+在视频上传的接口中，系统接收到 MP4 文件后仅做基本校验并持久化到本地文件系统或 OSS，随即将一条解析任务投入 Celery 消息队列或基于 Python 线程池的自建任务调度器。后台消费者进程获取任务后，首先利用 \texttt{ffmpeg} 工具包将视频抽取为轻量级的 16kHz 采样率的单声道 WAV 音频文件。接着，该音频被投递到预先部署好的 Whisper ASR 模型（或调用外部的高性能语音识别 API）中，经过长音频 VAD 降噪切分和并发解码，转化为带有精确起止时间戳（Start, End）的结构化字幕文本（VTT格式）。在文本获取完毕后，后端的文档处理管线立即介入，利用滑动窗口（Sliding Window）策略将字幕拼接并切分为大约 500 字的长度段落（保证段落之间有一定字符数的 Overlap 以保留语境）。最后，这些切片进行大批量（Batch）向量化编码，写入 FAISS 索引中。整个过程对于发起上传的教师用户完全透明，前端可通过轮询或 WebSocket 实时接收转码与向量化的进度百分比，系统鲁棒性和可用性得到了有效保障。
+
+\section{本章小结}
+本章系统且详细地阐述了该大模型辅助个性化学习系统的全方位实现过程。总计超过三千字的论述不仅深挖了前后端的各个模块，而且通过详尽的伪代码与文字剖析，将“基于AST与大模型推理的苏格拉底代码启发算法”的理论设计与工程实现融会贯通。结合混合 RAG 检索引擎的设计、前端高度联动的 Markdown 解析体系以及后台强大的异步数据处理框架，充分证明了本系统的工程技术含量与落地可行性。

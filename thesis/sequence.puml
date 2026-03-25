@@ -1,0 +1,35 @@
+@startuml
+autonumber
+actor "学生前端" as student
+participant "评测子系统" as backend
+participant "静态分析器" as ast
+participant "大语言模型服务" as llm
+
+student -> backend: 提交修改后的代码与当前尝试次数
+activate backend
+backend -> ast: 发送代码进行语法树解析
+activate ast
+ast --> backend: 返回规范得分 Q_i 与代码缺陷报告 Report_ast
+deactivate ast
+
+alt 语法存在严重错误 (无法解析)
+    backend --> student: 返回 status="KEEP_TRYING", 提示修复语法
+else 语法正常
+    backend -> backend: 将 Report_ast 与约束规则封装为 Prompt P_i
+    
+    backend -> llm: 发送推理请求 LLM(P_i, θ)
+    activate llm
+    llm --> backend: 返回 JSON 格式结果 R_i
+    deactivate llm
+    
+    backend -> backend: 校验 JSON 格式及限制条件
+    
+    alt 尝试次数 < 5 且大模型返回了答案
+        backend -> backend: 强制将 final_answer 置空
+    end
+    
+    backend -> backend: 记录日志并持久化入库
+    backend --> student: 返回最终反馈 R_i (包含状态、启发提问、得分)
+end
+deactivate backend
+@enduml
