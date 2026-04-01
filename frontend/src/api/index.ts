@@ -100,8 +100,8 @@ export const getExtractedKeywords = (questionId: string) =>
   apiClient.get(`/api/assignments/question/${questionId}/extract-keywords/result`);
 
 // 新增：代码训练营接口
-export const generateCodeTask = (keyword: string) => 
-  apiClient.post(`/api/code_training/generate_task`, { keyword });
+export const generateCodeTask = (keyword: string, task_type: string = 'debug') => 
+  apiClient.post(`/api/code_training/generate_task`, { keyword, task_type });
 
 export const submitCodeReview = (payload: any) =>
   apiClient.post(`/api/code_training/submit_review`, payload);
