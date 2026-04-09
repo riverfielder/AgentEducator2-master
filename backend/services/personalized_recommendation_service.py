@@ -138,6 +138,21 @@ class PersonalizedRecommendationService:
             desc(KnowledgePointMastery.mastery_level)
         ).limit(limit).all()
         
+        # 兜底：如果核心类别没有掌握度记录，获取用户的任意掌握度记录
+        if not highest_mastery:
+            highest_mastery = db.session.query(
+                KnowledgePointMastery.keyword_id,
+                KnowledgePointMastery.mastery_level,
+                Keyword.name,
+                Keyword.category
+            ).join(
+                Keyword, KnowledgePointMastery.keyword_id == Keyword.id
+            ).filter(
+                KnowledgePointMastery.user_id == user_id
+            ).order_by(
+                desc(KnowledgePointMastery.mastery_level)
+            ).limit(limit).all()
+        
         return [{
             'keyword_id': str(mastery.keyword_id),
             'keyword_name': mastery.name,
@@ -291,7 +306,7 @@ class PersonalizedRecommendationService:
                     func.count(QuestionKeyword.question_id).label('question_count')
                 ).outerjoin(VideoKeyword).outerjoin(DocumentKeyword).outerjoin(QuestionKeyword).filter(
                     ~Keyword.id.in_(existing_keywords),  # 排除已有记录的知识点
-                    ~Keyword.id.in_([k['id'] for k in fallback_list])  # 排除已选择的知识点
+                    ~Keyword.id.in_([k['id'] for k in fallback_list]) if fallback_list else True  # 排除已选择的知识点
                 ).group_by(Keyword.id, Keyword.name, Keyword.category).having(
                     or_(
                         func.count(VideoKeyword.video_id) > 0,
@@ -1291,6 +1306,33 @@ class PersonalizedRecommendationService:
         ).order_by(
             desc(func.count(VideoKeyword.video_id) + func.count(DocumentKeyword.document_id) + func.count(QuestionKeyword.question_id))
         ).limit(limit).all()
+        
+        # 兜底：如果没有基础类别或匹配的知识点，随机选择有资源的知识点
+        if len(basic_keywords) < limit:
+            existing_ids = [k.id for k in basic_keywords]
+            additional_keywords = db.session.query(
+                Keyword.id,
+                Keyword.name,
+                Keyword.category,
+                Keyword.description,
+                func.count(VideoKeyword.video_id).label('video_count'),
+                func.count(DocumentKeyword.document_id).label('document_count'),
+                func.count(QuestionKeyword.question_id).label('question_count')
+            ).outerjoin(VideoKeyword).outerjoin(DocumentKeyword).outerjoin(QuestionKeyword).filter(
+                ~Keyword.id.in_(existing_ids) if existing_ids else True
+            ).group_by(
+                Keyword.id, Keyword.name, Keyword.category, Keyword.description
+            ).having(
+                or_(
+                    func.count(VideoKeyword.video_id) > 0,
+                    func.count(DocumentKeyword.document_id) > 0,
+                    func.count(QuestionKeyword.question_id) > 0
+                )
+            ).order_by(
+                desc(func.count(VideoKeyword.video_id) + func.count(DocumentKeyword.document_id) + func.count(QuestionKeyword.question_id))
+            ).limit(limit - len(basic_keywords)).all()
+            
+            basic_keywords.extend(additional_keywords)
         
         return [{
             'id': str(keyword.id),
