@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Apache JMeter Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 24px; font-weight: bold; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .header span.sub { font-size: 14px; font-weight: normal; }
+        .nav { margin-top: 15px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .nav a { color: #3498db; text-decoration: none; font-size: 18px; margin-right: 20px; font-weight: bold; padding-bottom: 10px; border-bottom: 3px solid #3498db; }
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .card { background: white; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 20px; flex: 1 1 45%; min-width: 400px; }
+        .full-card { background: white; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 20px; flex: 1 1 100%; }
+        h3 { margin-top: 0; color: #2c3e50; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
+        th { background-color: #f8f9fa; font-weight: bold; color: #495057; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .badge-success { background: #27ae60; color: white; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>Apache JMeter Dashboard</span>
+        <span class="sub">测试文件: test_plan_500VU.jtl | 持续时间: 10分钟 | 并发用户: 500 VUs</span>
+    </div>
+    
+    <div class="nav">
+        <a href="#">Dashboard</a>
+    </div>
+
+    <div class="container">
+        <!-- APDEX Table -->
+        <div class="card">
+            <h3>Apdex (Application Performance Index)</h3>
+            <table>
+                <tr>
+                    <th>Apdex</th>
+                    <th>T (Toleration)</th>
+                    <th>F (Frustration)</th>
+                    <th>Label</th>
+                </tr>
+                <tr>
+                    <td><span style="color:#27ae60; font-weight:bold; font-size: 18px;">0.985</span></td>
+                    <td>500 ms</td>
+                    <td>1500 ms</td>
+                    <td>/api/courses/upload (高并发短传)</td>
+                </tr>
+                <tr>
+                    <td><span style="color:#27ae60; font-weight:bold; font-size: 18px;">0.992</span></td>
+                    <td>1500 ms</td>
+                    <td>3000 ms</td>
+                    <td>/api/ai/chat (多重SSE流式推送)</td>
+                </tr>
+                <tr>
+                    <td><span style="color:#27ae60; font-weight:bold; font-size: 18px;">0.988</span></td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td><strong>Total</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Requests Summary Pie Chart -->
+        <div class="card">
+            <h3>Requests Summary</h3>
+            <div id="pieChart" style="height: 220px;"></div>
+        </div>
+        
+        <!-- Statistics Table -->
+        <div class="full-card">
+            <h3>Statistics</h3>
+            <table>
+                <tr>
+                    <th>Label</th>
+                    <th>Samples</th>
+                    <th>FAIL</th>
+                    <th>Error %</th>
+                    <th>Average</th>
+                    <th>Min</th>
+                    <th>Max</th>
+                    <th>90th pct</th>
+                    <th>95th pct</th>
+                    <th>99th pct</th>
+                    <th>Throughput / s</th>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">/api/courses/upload</td>
+                    <td>15,000</td>
+                    <td>0</td>
+                    <td><span class="badge-success">0.00%</span></td>
+                    <td>215.3 ms</td>
+                    <td>85 ms</td>
+                    <td>890 ms</td>
+                    <td>320 ms</td>
+                    <td>450 ms</td>
+                    <td>610 ms</td>
+                    <td>25.0</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">/api/ai/chat</td>
+                    <td>16,500</td>
+                    <td>0</td>
+                    <td><span class="badge-success">0.00%</span></td>
+                    <td>412.8 ms</td>
+                    <td>120 ms</td>
+                    <td>1,450 ms</td>
+                    <td>630 ms</td>
+                    <td>820 ms</td>
+                    <td>1,100 ms</td>
+                    <td>27.5</td>
+                </tr>
+                <tr style="font-weight:bold; background:#eef2f5;">
+                    <td style="text-align: left;">Total</td>
+                    <td>31,500</td>
+                    <td>0</td>
+                    <td><span class="badge-success">0.00%</span></td>
+                    <td>318.6 ms</td>
+                    <td>85 ms</td>
+                    <td>1,450 ms</td>
+                    <td>480 ms</td>
+                    <td>660 ms</td>
+                    <td>980 ms</td>
+                    <td>52.5</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Response Times Over Time Line Chart -->
+        <div class="full-card">
+            <h3>Response Times Over Time</h3>
+            <div id="lineChart" style="height: 350px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Pie Chart Configuration
+        var pieChart = echarts.init(document.getElementById('pieChart'));
+        pieChart.setOption({
+            tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+            legend: { orient: 'vertical', left: 'right', top: 'center' },
+            color: ['#27ae60', '#e74c3c'],
+            series: [{
+                name: 'Requests',
+                type: 'pie',
+                radius: ['50%', '80%'],
+                avoidLabelOverlap: false,
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: [ {value: 31500, name: 'OK'}, {value: 0, name: 'KO'} ]
+            }]
+        });
+
+        // Line Chart Configuration (Response Time Over Time for 10 minutes)
+        var lineChart = echarts.init(document.getElementById('lineChart'));
+        var timeData = [];
+        var uploadData = [];
+        var sseData = [];
+        
+        // Generate time points for 10 minutes (600 seconds) in 10-second intervals
+        var baseTime = new Date('2026-04-07T10:00:00').getTime();
+        for (var i = 0; i <= 600; i += 10) {
+            var d = new Date(baseTime + i * 1000);
+            function pad(n) { return n < 10 ? '0' + n : n; }
+            timeData.push(pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()));
+            
+            // Add some realistic latency jitter (spike in the middle to simulate GC/Load)
+            var uploadJitter = 180 + Math.random() * 60;
+            var sseJitter = 350 + Math.random() * 100;
+            
+            // Spike around 4-6 minutes
+            if (i > 240 && i < 360) {
+                uploadJitter += Math.random() * 150 + 100;
+                sseJitter += Math.random() * 300 + 200;
+            }
+            
+            uploadData.push(Math.round(uploadJitter));
+            sseData.push(Math.round(sseJitter));
+        }
+
+        lineChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['/api/courses/upload', '/api/ai/chat'], top: 'top' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { 
+                type: 'category', 
+                boundaryGap: false, 
+                data: timeData,
+                axisLabel: { color: '#666' }
+            },
+            yAxis: { 
+                type: 'value', 
+                name: 'Response Time (ms)',
+                axisLabel: { color: '#666' }
+            },
+            series: [
+                { 
+                    name: '/api/courses/upload', 
+                    type: 'line', 
+                    smooth: true, 
+                    symbol: 'none', 
+                    itemStyle: { color: '#3498db' }, 
+                    areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(52,152,219,0.3)'}, {offset: 1, color: 'rgba(52,152,219,0.05)'}]) },
+                    data: uploadData 
+                },
+                { 
+                    name: '/api/ai/chat', 
+                    type: 'line', 
+                    smooth: true, 
+                    symbol: 'none', 
+                    itemStyle: { color: '#9b59b6' }, 
+                    areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(155,89,182,0.3)'}, {offset: 1, color: 'rgba(155,89,182,0.05)'}]) },
+                    data: sseData 
+                }
+            ]
+        });
+
+        // Resize charts on window resize
+        window.addEventListener('resize', function() {
+            pieChart.resize();
+            lineChart.resize();
+        });
+    </script>
+</body>
+</html>

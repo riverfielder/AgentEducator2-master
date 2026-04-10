@@ -2,123 +2,216 @@
 
 \section{总体设计}
 
-本系统总体上采用前后端分离的微服务化分层架构设计（Layered Architecture），并结合大语言模型组件和检索引擎进行了特化。总体架构自下而上分为基础设施层、数据持久层、业务服务层及表现层，同时引入了 AI Agent 中间件来桥接数据层与表现层。
+本系统摒弃了传统的单体应用或简单的微服务架构，针对在线教育中 AI 核心能力的深度融合需求，重新设计并特化了带有 LLM 调度中间件、AST 静态分析引擎及 RAG 混合检索引擎的分层架构。总体架构自下而上分为基础设施层、数据持久层、业务核心服务层（含 AI 特化层）及表现层。该架构不仅解决了传统平台“一刀切”的瓶颈，而且显著提升了代码诊断与知识检索的精准度。
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth,height=0.4\textheight,keepaspectratio]{arch.png} % 架构图
-  \caption{基于大模型的个性化学习系统分层架构实例}
+  \caption{结合大语言模型分析与检索增强的特化系统架构图}
   \label{fig:architecture}
 \end{figure}
 
-系统架构特化描述如下：
+架构各层级职责与特化交互规则解读：
 
-（1）\textbf{基础设施层}：通过 Docker 容器化部署在 Linux 服务器上，由 Nginx 进行动静分离及反向代理，有效提升了前端静态资源的加载速度。
+（1）\textbf{基础设施层}：通过 Docker 容器化技术部署在云端 Linux 服务器上，使用 Nginx 进行动静分离与反向代理。这层保障了底层的网络隔离与负载均衡。
 
-（2）\textbf{数据持久层}：采用多源存储架构。MySQL 用于存储强一致性的结构化业务数据；Redis 作为内存中间件，缓存频繁访问的数据及维护问答会话的上下文；FAISS 向量数据库用于持久化存储视频字幕与教案的稠密语义向量。
+（2）\textbf{数据持久层}：采用多源存储架构以满足多模态学习数据的读写：
+\begin{itemize}
+    \item \textbf{MySQL}：存储强一致性的结构化业务数据（用户、课程、订单、实训记录）。
+    \item \textbf{Redis}：作为高速缓存与消息中间件，维护短时问答会话上下文（Session）与系统状态机制。
+    \item \textbf{FAISS 向量库}：AI 业务特化的多维稠密向量存储，负责持久化课程视频转录的字幕片段及教案提取的向量张量。
+\end{itemize}
 
-（3）\textbf{业务服务层（核心层）}：在 Flask 后端框架上，划分为基础业务逻辑（认证、课程管理）和 AI 增强引擎（RAG Retrieval Pipeline，代码 AST Static Analyzer，LLM Invocation Service）。该层通过消息队列或线程池异步调度高负载的预处理任务。
+（3）\textbf{业务服务层（AI 核心组装层）}：这是本架构区别于传统教育管理系统（如基于 Java Spring 通用模型）的先进性所在。在 Flask 微框架底座之上，除了传统的认证鉴权、RESTful 数据分发等基础模块，核心构建了三大 AI 调度引擎：
+\begin{itemize}
+    \item \textbf{AST 代码分析引擎}：负责剥离自沙箱的白盒探测，提供圈复杂度、错误模式抽象树反馈。
+    \item \textbf{RAG 混合检索引擎}：承接从 FAISS 中以余弦相似度及 BM25 词检索召回知识片段的聚合，执行倒数秩融合（RRF）重排。
+    \item \textbf{LLM 调度中间件}：利用 LangChain 及定制的 Prompt 缓冲池，结合前两者的特征输入，流控式（SSE）调度云端大模型接口。各引擎之间通过异步线程池和事件驱动队列进行数据总线交互，大幅降低了主进程的阻塞。
+\end{itemize}
 
-（4）\textbf{表现层}：基于 Vue 3 构建的富客户端应用，实现了与用户的强交互，包括流式 Markdown 渲染、Markdown 到视频时间轴的事件联动以及动态渲染的在线代码编辑器沙箱。
+（4）\textbf{表现层}：基于 Vue 3 组合式 API 构建的富客户端环境。特化了流式 Markdown 所见即所得渲染引擎、Markdown 引用角标与 HTML5 视频时间轴的事件委托联动模块，以及深度集成的代码动态 Web 编辑器沙盒视图。
 
 \section{详细设计}
 
-详细设计主要包括核心模块的类与时序设计、数据库结构（E-R 图）、接口规范以及关键界面设计。
+详细设计阶段对核心 AI 驱动模块与基础业务底座的结构形态进行细化规划，主要涵盖 UML 建模、数据库实体多重性及表结构全貌，以及符合工程化规范的 API 与界面设计。
 
-\subsection{模块/类设计}
+\subsection{模块与 UML 设计}
 
-以“启发式代码提交与评测”这一核心模块为例，以下给出该模块的时序图。该图展示了从前端发起提交，到后端协调代码静态分析器、生成提示词、调用大语言模型服务，最后流式响应反馈给前端的整个交互生命周期。
+为了深入剖析本系统两大创新能力（苏格拉底启发式代码评测，及视频知识 RAG 检索联动），本节选绘其核心的类图设计与交互时序图。
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth,height=0.4\textheight,keepaspectratio]{sequence.png} % 时序图
-  \caption{“启发式代码提交与评测”用例实现的时序图}
+  \caption{启发式代码评测与视频 RAG 问答核心模块 UML 类图与时序图集成设计}
   \label{fig:sequence_code_eval}
 \end{figure}
 
-\subsection{数据库设计}
+\textbf{类职责与动态设计解读：}
+在代码评测与反馈体系中：前端发起的 \texttt{SubmitCodeCommand} 由后端的 \texttt{JudgeController} 接收。系统首先调用封装的 \texttt{ASTParser} 类对代码载荷构建抽象树并进行递归解析（如 \texttt{visit\_For}, \texttt{visit\_If} 等重写方法），产出包含指标数据的 \texttt{AnalysisReport}。若无明显错漏，代码才被送至 \texttt{SandboxExecutor} 实例中受限执行检查黑盒断言；任何阶段捕获的结构或逻辑异常均交由 \texttt{PromptBuilder}，结合“苏格拉底原则”拼装上下文后，通过 \texttt{LLMScheduler} 请求大模型。状态图层面，实训评测任务具备“等待”、“AST检验中”、“运行执行保护中”、“大模型推理中”、“结果渲染反馈”的单向状态流转链，此设计极大地剥离了评测业务的时序耦合度。
 
-为了支撑系统的多模态数据与学习者的状态记录，需要对核心实体及其关联进行详细建模。系统的主要实体包括：用户（User）、课程（Course）、视频资源（Video）、问答会话（ChatSession）、对话消息（Message）以及代码评测记录（CodeTaskRecord）。
+\subsection{数据库结构与实体 E-R 设计}
 
-\begin{figure}[ht]
+为了支撑系统架构的多模态承载、历史埋点追踪及角色权限区分，本系统必须厘清核心业务实体间的关联及多重性。
+
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth,height=0.4\textheight,keepaspectratio]{er.png} % ER图
-  \caption{在线个性化学习系统 E-R 图}
+  \caption{基于多重性关联的系统核心 E-R 图}
   \label{fig:er_diagram}
 \end{figure}
 
-\textbf{主键与多重性分析}：
+\textbf{实体间多重性与关联解读}：
 
-（1）\textbf{User 与 Course (1对多)}：一个教师（Teacher 角色）可以创建并管理多门课程，\texttt{teacher\_id} 作为 Course 表的外键\cite{whu-bachelor:28}。
+（1）\textbf{User (1) $\leftrightarrow$ (*) Course}：一个教师角色（User）可以创建多门线上课程（Course），通过 \texttt{creator\_id} 外键实现 1 对多强关联。
 
-（2）\textbf{Course 与 Video (1对多)}：一门课程下挂载多个教学视频。Video 表除了基本的自增主键 \texttt{id}外，还包含外键 \texttt{course\_id}。
+（2）\textbf{Course (1) $\leftrightarrow$ (*) Video}：一门课程包含多个供学习的细分教学视频（Video）。
 
-（3）\textbf{ChatSession 与 Message (1对多)}：每一个问答会话包含多条流式对话消息，Message 表中的 \texttt{session\_id} 关联至 ChatSession 的主键。
+（3）\textbf{User (1) $\leftrightarrow$ (*) ChatSession (1) $\leftrightarrow$ (*) Message}：学生（User）有权发起并存留多段问答会话（ChatSession），每个会话下可包含多条按时序排列的问答消息记录（Message）。
 
-\textbf{数据库核心表结构详述}：
-\begin{table}[ht]
+（4）\textbf{User (1) $\leftrightarrow$ (*) CodeTaskRecord}：用户参与代码实训时，生成多条尝试与提交的溯源流水记录。
+
+\textbf{全量核心业务数据表结构详述}：
+
+以下表设计充分遵循了主外键关联强约束，均配备了对应数据类型和功能说明。
+
+\begin{table}[htbp]
 \centering
-\caption{User (用户表) 设计}
+\small
+\caption{User (用户表) 结构设计}
 \label{tab:user_table}
-\begin{tabular}{|l|l|l|p{5cm}|}
+\begin{tabular}{|p{2cm}|p{2cm}|p{5cm}|p{4.5cm}|}
 \hline
-字段名 & 数据类型 & 约束 & 描述 \\ \hline
-id & INT & PRIMARY KEY, AUTO\_INC & 用户唯一标识 \\ \hline
-username & VARCHAR(50) & NOT NULL, UNIQUE & 用户登录名 \\ \hline
-email & VARCHAR(100) & NOT NULL, UNIQUE & 注册邮箱 \\ \hline
-password\_hash & VARCHAR(255) & NOT NULL & 加盐哈希后的密码 \\ \hline
-role & ENUM & DEFAULT 'student' & 角色类型(student/teacher) \\ \hline
+\textbf{字段名} & \textbf{数据类型} & \textbf{约束与键属性} & \textbf{描述} \\ \hline
+id & INT & 主键 (PK), 自增 & 用户全局唯一标识 \\ \hline
+username & VARCHAR(50) & 非空, 唯一索引 & 用户登录账号名 \\ \hline
+password\_hash & VARCHAR(255)& 非空 & bcrypt 加盐哈希后的密码 \\ \hline
+role & ENUM & 默认 'student' & 权限角色(student/teacher) \\ \hline
+created\_at & DATETIME & 默认 CURRENT\_TIMESTAMP & 账号注册开通时间 \\ \hline
 \end{tabular}
 \end{table}
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
-\caption{Video (视频资源表) 设计}
-\label{tab:video_table}
-\begin{tabular}{|l|l|l|p{5cm}|}
+\small
+\caption{Course (课程核心表) 结构设计}
+\label{tab:course_table}
+\begin{tabular}{|p{2.5cm}|p{2cm}|p{4.5cm}|p{4.5cm}|}
 \hline
-字段名 & 数据类型 & 约束 & 描述 \\ \hline
-id & INT & PRIMARY KEY, AUTO\_INC & 视频记录主键 \\ \hline
-course\_id & INT & FOREIGN KEY & 归属的课程ID \\ \hline
-title & VARCHAR(100) & NOT NULL & 视频标题 \\ \hline
-video\_url & VARCHAR(255) & NOT NULL & 视频文件存储路径或OSS地址 \\ \hline
-parsed\_text & TEXT & NULL & ASR解析生成的完整字幕 \\ \hline
-vector\_path & VARCHAR(255) & NULL & 对应的FAISS向量库索引路径 \\ \hline
+\textbf{字段名} & \textbf{数据类型} & \textbf{约束与键属性} & \textbf{描述} \\ \hline
+id & INT & 主键 (PK), 自增 & 课程唯一标识 \\ \hline
+title & VARCHAR(100) & 非空 & 课程大纲标题 \\ \hline
+description & TEXT & 允许为空 & 课程详情描述富文本 \\ \hline
+creator\_id & INT & 外键 (FK) 关联 User.id & 创建该课程的教师ID \\ \hline
 \end{tabular}
 \end{table}
 
-\subsection{接口设计}
+\begin{table}[htbp]
+\centering
+\small
+\caption{Video (多模态教学资源表) 结构设计}
+\label{tab:video_table}
+\begin{tabular}{|p{2cm}|p{2cm}|p{4.5cm}|p{5cm}|}
+\hline
+\textbf{字段名} & \textbf{数据类型} & \textbf{约束与键属性} & \textbf{描述} \\ \hline
+id & INT & 主键 (PK), 自增 & 视频多媒体库唯一标识 \\ \hline
+course\_id & INT & 外键 (FK) 关联 Course.id& 归属课程的绑定关系 \\ \hline
+title & VARCHAR(100) & 非空 & 视频小节标题 \\ \hline
+video\_url & VARCHAR(255)& 非空 & 云对象存储或本地挂载路径 \\ \hline
+parsed\_text & TEXT & 允许为空 & 抽取或转录出的字幕文档流 \\ \hline
+vector\_path & VARCHAR(255)& 允许为空 & 磁盘 FAISS 片段块索引指针 \\ \hline
+\end{tabular}
+\end{table}
 
-系统采用 RESTful 风格的 API 设计规范。以下列举并详细说明两个关键接口。
+\begin{table}[htbp]
+\centering
+\small
+\caption{CodeTaskRecord (代码实训流转记录表) 结构设计}
+\label{tab:code_record_table}
+\begin{tabular}{|p{2cm}|p{2cm}|p{4.5cm}|p{5cm}|}
+\hline
+\textbf{字段名} & \textbf{数据类型} & \textbf{约束与键属性} & \textbf{描述} \\ \hline
+id & INT & 主键 (PK), 自增 & 评测提交次序流水号 \\ \hline
+student\_id & INT & 外键 (FK) 关联 User.id & 提交作业的学生 ID \\ \hline
+task\_id & INT & 非空索引 & 所属作业题库模板ID \\ \hline
+submit\_code & TEXT & 非空 & 提交源码原文冷备 \\ \hline
+syntax\_score& FLOAT & 默认 0.0 & AST预评估计算得分 \\ \hline
+ai\_feedback & TEXT & 允许为空 & 大模型生成的苏格拉底辅导词 \\ \hline
+\end{tabular}
+\end{table}
 
-\textbf{1. 生成智能代码实训题目接口}
+\subsection{接口设计（RESTful 规范）}
 
-\textbf{URL}：\texttt{/api/code\_training/generate\_task} \\
-\textbf{Method}：POST \\
-\textbf{描述}：根据指定的课程范围与任务类型（Debug 或 Refactor），通过大语言模型动态生成包含预设缺陷或坏味道的代码模板及题目描述\cite{whu-bachelor:20}。在数学模型上，可将生成任务抽象为函数 $G(k, t) \rightarrow \{id, D, C_{bad}\}$，其中 $k$ 为知识点范畴约束，$t \in \{debug, refactor\}$ 为任务类别。 \\
-\textbf{请求参数}：
-（1）\texttt{keyword} (String, 必填)：限定题目的知识点范畴。
-（2）\texttt{task\_type} (String, 选填)：任务类别。 \\
-\textbf{响应结构}：系统返回格式化的键值对数据，包含任务的唯一标识 $id$、任务类别描述、以及由模型构造的带有特定逻辑漏洞的原始代码段 $C_{bad}$，供前端渲染到沙箱中供学生作答。
+系统通信全部采用跨域适配的 RESTful API 范式。涵盖了请求动词、Header鉴权、载荷细则及统一的 JSON 异常脱敏格式机制：
 
 \vspace{1em}
-\textbf{2. 视频资源 AI 流式问答接口}
+\noindent\textbf{1. 用户认证鉴权登录接口}\\
+\textbf{描述}：接受用户明文输入，验证并派发应用 JWT 会话签标。\\
+\textbf{URL}：\texttt{/api/auth/login} \quad \textbf{Method}：\texttt{POST} \\
+\textbf{请求头 Headers}：\texttt{Content-Type: application/json} \\
+\textbf{请求参数 (Body)}：
+\begin{itemize}
+    \item \texttt{username} (String, 必填)：用户的登录账号名。
+    \item \texttt{password} (String, 必填)：用户的明文密码（受传输层安全协议保护）。
+\end{itemize}
+\textbf{响应结构 (HTTP 200)}：
+\begin{verbatim}
+{
+  "code": 200,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5c... (JWT String)",
+    "role": "student",
+    "user_id": 102
+  }
+}
+\end{verbatim}
+\textbf{异常响应 (HTTP 401)}：鉴权失败或撞库锁定状态则返回对应的错误业务码及拦截提示（如 \texttt{"code": 401, "message": "Invalid password"}）。
 
-\textbf{URL}：\texttt{/api/qa/ask-stream} \\
-\textbf{Method}：POST \\
-\textbf{描述}：基于 SSE（Server-Sent Events）的检索增强流式问答，前端通过 EventSource 持续接收输出流，实现打字机效果。可以表示为连续的 token 序列输出 $S = \{w_1, w_2, \dots, w_n\}$，其中 $w_i$ 随时间 $T_i$ 逐步抵达客户端\cite{whu-bachelor:30}。 \\
-\textbf{请求参数}：
-（1）\texttt{question} (String, 必填)：用户的自然语言提问。
-（2）\texttt{videoIds} (Array, 选填)：限定在特定视频的上下文切片中进行检索。
-（3）\texttt{session\_id} (String, 选填)：用于维持多轮对话记忆的唯一标识符。 \\
-\textbf{返回机制}：通过 \texttt{text/event-stream} 协议头，分块返回大模型生成的答案及溯源引用标记数据。
+\vspace{1em}
+\noindent\textbf{2. 启发式智能代码提交与评测接口}\\
+\textbf{描述}：核心功能接口。接收学生代码，穿透 AST 与黑盒沙箱，触发 RAG 与 LLM 的启发评估链路并发还模型辅导文本。 \\
+\textbf{URL}：\texttt{/api/code\_training/submit} \quad \textbf{Method}：\texttt{POST} \\
+\textbf{请求头 Headers}：\texttt{Authorization: Bearer <有效JWT>} \\
+\textbf{请求参数 (Body)}：
+\begin{itemize}
+    \item \texttt{task\_id} (Integer, 必填)：本轮实训的题目全局编号。
+    \item \texttt{code\_content} (String, 必填)：前台编辑器传递来的实写 Python 源代码。
+    \item \texttt{submit\_counts} (Integer, 选填/默认0)：该题目已触发的试错评测次数（驱动 AI 引导深度）。
+\end{itemize}
+\textbf{响应结构 (HTTP 200)}：
+\begin{verbatim}
+{
+  "code": 200,
+  "data": {
+    "status": "KEEP_TRYING",
+    "ast_report": {"cyclomatic_complexity": 8, "vulnerabilities": ["UnboundLocalError"]},
+    "ai_reply": "你的核心思路非常接近了。但请注意在外层 for 循环处..."
+  }
+}
+\end{verbatim}
+\textbf{异常响应 (HTTP 403 / 500)}：若无 JWT 回掉 403。若大模型引擎超时熔断或沙箱死锁，统一下发 \texttt{"code": 500, "message": "Judgment cluster busy"}。
 
-\subsection{界面设计}
+\vspace{1em}
+\noindent\textbf{3. RAG 视频切片流式 AI 问答接口}\\
+\textbf{描述}：依托 Server-Sent Events（SSE）长连接的推拉流问答服务，前端 EventSource 持续切块接收回答帧，构成首字极速渲染。 \\
+\textbf{URL}：\texttt{/api/qa/ask-stream} \quad \textbf{Method}：\texttt{POST} （配合 \texttt{text/event-stream}）\\
+\textbf{请求头 Headers}：\texttt{Authorization: Bearer <有效JWT>} \\
+\textbf{请求参数 (Body)}：
+\begin{itemize}
+    \item \texttt{question} (String, 必填)：学生问询。
+    \item \texttt{video\_id} (Integer, 必填)：划定知识检索 FAISS 扇区范围的视频标记。
+\end{itemize}
+\textbf{返回机制}：每次服务端下推一块形如 \texttt{data: \{"token": "它主", "source\_timestamp": null\}}\textbackslash{}n\textbackslash{}n 的裸事件载荷，其中特定的标识区块会挂载视频跳转偏移量（秒值）。
 
-系统的界面设计注重用户的沉浸感与交互反馈，以下为两个核心界面的原型设计说明。
+\subsection{系统高保真界面与核心交互设计}
 
-\textbf{智能代码实训工作台原型}：
-界面左侧为任务描述区与 AI 导师反馈区。上方包含“获取 Debug 专项题”与“获取代码质量重构题”两个高亮按钮；中间展示任务的详细文本；下方则为一个动态的“状态徽章”卡片，用于显示大模型的启发评语。界面右侧上方是支持高亮和行号的 Monaco/CodeMirror 代码编辑器，下方则是黑色底色的控制台 Console，用于实时打印代码执行的 `stdout` 和 `stderr`。
+本系统完全依据人机交互体验规范构建。为了具象化论证本文架构，本节结合前文设计的接口补充说明两大核心视图原型图景界面的架构功能匹配度与操作链路（截图及实际运行图见第六章系统测试展示）：
 
-\textbf{视频联动学习与 AI 助手页面原型}：
-界面采取左右分栏布局。左侧占用三分之二宽度，承载大型 HTML5 视频播放器和底部的功能菜单区；右侧三分之一宽度为 AI 助手聊天侧边栏。聊天列表中的 Markdown 回复内含有类似于文献引用的上标（如 \texttt{[1]}）。当鼠标悬停或点击该上标时，具有明显的交互反馈，且左侧播放器会迅速调整进度条跳跃至对应秒数。
+（1）\textbf{智能代码启发实训工作台模型}：
+界面分为左右分栏（Split-Pane）主视场。左侧为题目 Markdown 富文本描述区与包含多步骤圆点的“学习路径进程卡”，以及呈现 AI“苏格拉底辅助提示”的仿终端高亮面板。右侧为集成了 Monaco Editor 或 CodeMirror 核心引擎的高性能代码编辑器，支持悬停高亮提示与语法补全。
+\textbf{体验交互说明}：用户重构代码并点击 \texttt{Shift+Enter} 后，系统立即锁死工具栏阻挡并发穿透，左侧面板开启 Loading 骨架屏；约 2-3 秒等待后台 AST 闭环评审并驱动大模型后，左侧面板打字机式平滑展现引导语。若学生由于尝试耗尽解封标准答案，界面右下角浮出一个抽屉式的答案“Diff 对比窗口”，使得代码纠偏更为立体。
+
+（2）\textbf{视频联动 AI 知识问答页面模型}：
+界面遵循通用的左右视频学习布局，左侧上方镶嵌经过全屏定制化的 HTML5 \texttt{<video>} 组件，允许接收外部的精确 Seek 和自动锚定启播指令；右侧固定宽度（约 30\%）挂载独立的 AI Chat 流式对话流（仿 ChatGPT 界面设计风格）。
+\textbf{体验交互说明}：当视频教学概念晦涩时，在此页面右侧的对话框中无缝查询；服务器返回流中解析出的形如“\texttt{[来源: 05:22]}”小标签会被正则编译为带有特定 CSS 样式的微秒链接组件。点击时，触发 Vue3 的全局事件总线机制驱动播放器 DOM，用户视角将在当前页“秒滑”至提及该原理的字幕片段位置，达到视觉与认知完美同步的教育产品质感。
+

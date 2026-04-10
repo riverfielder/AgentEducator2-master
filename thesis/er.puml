@@ -1,67 +1,70 @@
 @startuml
 skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 70
+skinparam EntityBackgroundColor #F8F8F8
 
-entity "User (用户)" as user {
+entity "User (用户表)" as user {
   * id : INT <<PK>>
   --
-  username : VARCHAR(50)
-  email : VARCHAR(100)
-  password_hash : VARCHAR(255)
-  role : ENUM(student, teacher)
-}
-
-entity "Course (课程)" as course {
-  * id : INT <<PK>>
-  --
-  name : VARCHAR(100)
-  description : TEXT
-  teacher_id : INT <<FK>>
-}
-
-entity "Video (视频)" as video {
-  * id : INT <<PK>>
-  --
-  course_id : INT <<FK>>
-  title : VARCHAR(100)
-  video_url : VARCHAR(255)
-  parsed_text : TEXT
-  vector_path : VARCHAR(255)
-}
-
-entity "ChatSession (问答会话)" as session {
-  * id : VARCHAR(36) <<PK>>
-  --
-  user_id : INT <<FK>>
-  video_id : INT <<FK>>
+  * username : VARCHAR(50) [UK]
+  * password_hash : VARCHAR(255)
+  role : ENUM('student', 'teacher')
   created_at : DATETIME
 }
 
-entity "Message (对话消息)" as message {
+entity "Course (课程核心表)" as course {
   * id : INT <<PK>>
   --
-  session_id : VARCHAR(36) <<FK>>
-  role : VARCHAR(20)
-  content : TEXT
-  sources : JSON
+  * title : VARCHAR(100)
+  description : TEXT
+  * creator_id : INT <<FK>>
 }
 
-entity "CodeTaskRecord (代码评测记录)" as record {
+entity "Video (多模态教学资源表)" as video {
   * id : INT <<PK>>
   --
-  user_id : INT <<FK>>
-  course_id : INT <<FK>>
-  task_type : VARCHAR(20)
-  try_count : INT
-  submitted_code : TEXT
-  static_score : INT
+  * course_id : INT <<FK>>
+  * title : VARCHAR(100)
+  * video_url : VARCHAR(255)
+  parsed_text : TEXT [字幕流]
+  vector_path : VARCHAR(255) [FAISS]
 }
 
-user ||--o{ course : "创建/管理"
-user ||--o{ session : "发起"
-course ||--o{ video : "包含"
-video ||--o{ session : "关联问答"
-session ||--o{ message : "包含"
-user ||--o{ record : "提交尝试"
-course ||--o{ record : "属于"
+entity "ChatSession (问答会话表)" as session {
+  * id : INT <<PK>>
+  --
+  * user_id : INT <<FK>>
+  * context_title : VARCHAR(100)
+  created_at : DATETIME
+}
+
+entity "Message (时序消息记录表)" as msg {
+  * id : INT <<PK>>
+  --
+  * session_id : INT <<FK>>
+  * content : TEXT
+  role_type : ENUM('user', 'assistant')
+  timestamp : DATETIME
+}
+
+entity "CodeTaskRecord (代码实训流转表)" as coderecord {
+  * id : INT <<PK>>
+  --
+  * student_id : INT <<FK>>
+  * task_id : INT
+  * submit_code : TEXT
+  syntax_score : FLOAT
+  ai_feedback : TEXT [苏格拉底辅导]
+}
+
+' 明确 1 对多关联 (1 to N)，并用 UML 符号标识多重性结构
+user "1" -- "0..*" course : 创建 >
+course "1" -- "1..*" video : 分出小节 >
+
+user "1" -- "0..*" session : 发起对话 >
+session "1" -- "1..*" msg : 包含聊天记录 >
+
+user "1" -- "0..*" coderecord : 提交实训记录 >
 
 @enduml

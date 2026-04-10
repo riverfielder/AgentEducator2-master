@@ -117,7 +117,7 @@ const getQuestionTypeName = (type: string) => {
 const generateTraining = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    const token = localStorage.getItem('wendao_token') || sessionStorage.getItem('wendao_token')
     const res = await axios.post('/api/training/generate', {
       keyword: keyword.value,
       count: 3
@@ -126,7 +126,20 @@ const generateTraining = async () => {
     })
     
     if (res.data.code === 200) {
-      questions.value = res.data.data
+      let resultData = res.data.data;
+      if (typeof resultData === 'string') {
+        try {
+          const match = resultData.match(/\[[\s\S]*\]/);
+          if (match) {
+            resultData = JSON.parse(match[0]);
+          } else {
+            resultData = JSON.parse(resultData);
+          }
+        } catch (e) {
+          console.error('Failed to parse JSON string:', e);
+        }
+      }
+      questions.value = resultData
       answers.value = {}
       results.value = {}
       currentIndex.value = 0
@@ -157,7 +170,7 @@ const submitCurrent = async () => {
 
   grading.value = true
   try {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    const token = localStorage.getItem('wendao_token') || sessionStorage.getItem('wendao_token')
     const res = await axios.post('/api/training/grade', {
       keyword: keyword.value,
       question: currentQuestion.value,

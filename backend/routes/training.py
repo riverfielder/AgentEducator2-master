@@ -11,6 +11,7 @@ training_bp = Blueprint('training', __name__)
 llm_service = UnifiedLLMService()
 
 @training_bp.route('/generate', methods=['POST'])
+@training_bp.route('/generate-personalized', methods=['POST'])
 @token_required
 def generate_training():
     """动态产生知识点专属训练卷"""
@@ -49,15 +50,23 @@ def generate_training():
 3. "type" 只能是 "single", "multiple", "blank" 或 "essay" 之一。
 """
     try:
-        llm = llm_service.get_llm("qa")
+        llm = llm_service.get_llm("qa_main")
         response = llm.predict(prompt)
         
         # 提取 JSON
         json_str = response
-        if '```json' in json_str:
-            json_str = json_str.split('```json')[1].split('```')[0].strip()
-        elif '```' in json_str:
-            json_str = json_str.split('```')[1].split('```')[0].strip()
+        
+        # 使用更稳健的正则表达式提取JSON数组
+        import re
+        match = re.search(r'\[.*\]', json_str, re.DOTALL)
+        if match:
+            json_str = match.group(0)
+        else:
+            # 兼容原有的代码块逻辑
+            if '```json' in json_str:
+                json_str = json_str.split('```json')[1].split('```')[0].strip()
+            elif '```' in json_str:
+                json_str = json_str.split('```')[1].split('```')[0].strip()
             
         questions = json.loads(json_str)
         # 为生成的题目赋上随机 UUID
@@ -148,7 +157,7 @@ def grade_training():
 }}
 """
         try:
-            llm = llm_service.get_llm("qa")
+            llm = llm_service.get_llm("qa_main")
             response = llm.predict(eval_prompt)
             # 解析 json
             json_str = response

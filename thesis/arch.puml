@@ -1,51 +1,44 @@
 @startuml
 skinparam componentStyle rectangle
+skinparam backgroundColor white
+skinparam padding 10
 
-package "表现层 / 前端 UI (Vue 3)" {
-  [Vue Router]
-  [Pinia 状态管理]
-  [视频播放组件]
-  [代码编辑器沙箱]
-  [Markdown 流式渲染]
+package "表现层 / 前端富客户端环境 (Vue 3)" {
+  [Markdown 流式渲染引擎]
+  [代码动态沙盒视图 (Monaco或CodeMirror)]
+  [HTML5 视频播放器 (时间轴联动)]
 }
 
-package "业务服务层 / 后端 Flask" {
-  [认证与用户服务]
-  [课程与视频服务]
-  [RAG 混合检索服务]
-  [代码 AST 分析服务]
-  [LLM 调度服务]
+package "业务核心服务层 (AI 特化级 - Flask)" {
+  [基础模块 (RESTful/认证/分发)]
+  [LLM 调度中间件 (LangChain & 缓冲池)]
+  
+  [AST 代码分析引擎 (白盒探测/圈复杂度)]
+  [RAG 混合检索引擎 (RRF重排/BM25)]
 }
 
-package "数据持久层" {
-  database "MySQL (结构化数据)" {
-    [用户信息/课程/日志]
-  }
-  database "Redis (缓存)" {
-    [会话缓存]
-  }
-  database "FAISS (向量索引)" {
-    [文档/字幕切片向量]
-  }
+package "数据持久层 (多源多模态存储)" {
+  database "MySQL (强一致性业务数据)\n[用户/课程/订单/实训]" as MySQL
+  database "Redis (高速缓存/消息中心)\n[Session/状态机制]" as Redis
+  database "FAISS (高维稠密向量存储)\n[字幕片段/教案向量]" as FAISS
 }
 
-package "基础设施层" {
-  node "Nginx反向代理"
-  node "Docker 容器"
+package "基础设施层 (云端部署)" {
+  node "Nginx反向代理 (动静分离/负载均衡)" as Nginx
+  node "Docker 容器化群集引擎" as Docker
 }
 
-[Vue Router] --> [认证与用户服务]
-[视频播放组件] --> [课程与视频服务]
-[视频播放组件] --> [RAG 混合检索服务]
-[代码编辑器沙箱] --> [代码 AST 分析服务]
-[Markdown 流式渲染] --> [LLM 调度服务]
+[表现层 / 前端富客户端环境 (Vue 3)] ..> [业务核心服务层 (AI 特化级 - Flask)] : HTTPS/REST, SSE
+[Markdown 流式渲染引擎] --> [LLM 调度中间件 (LangChain & 缓冲池)]
+[代码动态沙盒视图 (Monaco或CodeMirror)] --> [AST 代码分析引擎 (白盒探测/圈复杂度)]
+[HTML5 视频播放器 (时间轴联动)] --> [RAG 混合检索引擎 (RRF重排/BM25)]
 
-[认证与用户服务] --> [用户信息/课程/日志]
-[课程与视频服务] --> [用户信息/课程/日志]
-[RAG 混合检索服务] --> [文档/字幕切片向量]
-[RAG 混合检索服务] --> [会话缓存]
-[LLM 调度服务] --> [会话缓存]
+[业务核心服务层 (AI 特化级 - Flask)] --> MySQL
+[业务核心服务层 (AI 特化级 - Flask)] --> Redis
+[业务核心服务层 (AI 特化级 - Flask)] --> FAISS
 
-[业务服务层 / 后端 Flask] ..> [Nginx反向代理] : 部署于
-[Nginx反向代理] ..> [Docker 容器] : 运行于
+Nginx ..> [业务核心服务层 (AI 特化级 - Flask)] : 代理转发
+Docker ..> Nginx : 承载服务
+Docker ..> [数据持久层 (多源多模态存储)] : 承载持久卷
+
 @enduml

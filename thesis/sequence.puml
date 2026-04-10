@@ -1,35 +1,49 @@
 @startuml
 autonumber
-actor "学生前端" as student
-participant "评测子系统" as backend
-participant "静态分析器" as ast
-participant "大语言模型服务" as llm
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 150
 
-student -> backend: 提交修改后的代码与当前尝试次数
-activate backend
-backend -> ast: 发送代码进行语法树解析
+actor "学生客户端 (Vue 3)" as student
+
+box "业务层 (启发式代码评测数据流与类图联动)" #LightBlue
+participant "JudgeController\n<<REST API 入口>>" as controller
+participant "ASTParser\n<<白盒引擎>>" as ast
+participant "SandboxExecutor\n<<黑盒服务>>" as sandbox
+participant "PromptBuilder\n<<上下文拼接>>" as prompt
+participant "LLMScheduler\n<<推流客户端>>" as llm
+end box
+
+student -> controller: 1. SubmitCodeCommand(code, task_id)
+activate controller
+
+controller -> ast: 2. 发起静态语法树解析(code)
 activate ast
-ast --> backend: 返回规范得分 Q_i 与代码缺陷报告 Report_ast
+note right of ast: 递归调用重写方法\nvisit_For() / visit_If()\n生成规约圈复杂度
+ast --> controller: 3. 返回 AnalysisReport 结果载荷
 deactivate ast
 
-alt 语法存在严重错误 (无法解析)
-    backend --> student: 返回 status="KEEP_TRYING", 提示修复语法
-else 语法正常
-    backend -> backend: 将 Report_ast 与约束规则封装为 Prompt P_i
+alt 语法通过并允许执行
+    controller -> sandbox: 4. 送入受限沙箱运行
+    activate sandbox
+    note right of sandbox: 隔离网络/磁盘读写\n执行断言与边界检验
+    sandbox --> controller: 5. 抛出执行结果与 Traceback
+    deactivate sandbox
+
+    controller -> prompt: 6. 整合静态诊断与动态黑盒错误
+    activate prompt
+    note right of prompt: 运用“苏格拉底原则”\n拼凑不给代码只给启发的 Prompt
+    prompt --> controller: 7. 输出格式化的引导文本
+    deactivate prompt
     
-    backend -> llm: 发送推理请求 LLM(P_i, θ)
+    controller -> llm: 8. 请求大模型推理(Prompt_Ready)
     activate llm
-    llm --> backend: 返回 JSON 格式结果 R_i
+    llm --> controller: 9. 开启流式 SSE 长连接
     deactivate llm
-    
-    backend -> backend: 校验 JSON 格式及限制条件
-    
-    alt 尝试次数 < 5 且大模型返回了答案
-        backend -> backend: 强制将 final_answer 置空
-    end
-    
-    backend -> backend: 记录日志并持久化入库
-    backend --> student: 返回最终反馈 R_i (包含状态、启发提问、得分)
+
+    controller --> student: 10. 持续下推数据 [data: {"token": "xxx"}]
+else 存在致命基础语法缺陷 (如缺少冒号/括号缺失)
+    controller --> student: 10. 终止流转, 返回 "KEEP_TRYING"\n并提示基础结构修复
 end
-deactivate backend
+
+deactivate controller
 @enduml

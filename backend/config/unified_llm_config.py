@@ -130,6 +130,17 @@ class UnifiedLLMConfig:
         )
         
         # QA和聊天模型
+        self._models["qa"] = LLMModelConfig(
+            model_name="doubao-seed-1-8-251228",
+            provider=LLMProvider.VOLCENGINE,
+            endpoint_key="volcengine_doubao",
+            default_params={
+                "temperature": 0.5,
+                "max_tokens": 4096,
+                "timeout": 36000
+            },
+            description="qa fallback"
+        )
         self._models["qa_main"] = LLMModelConfig(
             model_name="doubao-seed-1-8-251228",
             provider=LLMProvider.VOLCENGINE,

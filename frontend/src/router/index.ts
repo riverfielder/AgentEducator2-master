@@ -203,6 +203,12 @@ const router = createRouter({
       }
     },
     {
+      path: '/dynamic-training',
+      name: 'dynamicTraining',
+      component: () => import('../views/DynamicTraining.vue'),
+      meta: { layout: 'default' }
+    },
+    {
       path: '/knowledge-map',
       name: 'KnowledgeMap',
       component: () => import('../views/KnowledgeMap.vue'),
