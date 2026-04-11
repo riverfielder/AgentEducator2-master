@@ -1002,7 +1002,7 @@ const saveAsDraft = async () => {
       dueDate: assignment.value.dueDate,
       questions: assignment.value.questions,
       teacherId: userStore.userId,
-      publishTime: formatLocalDateTime(new Date())
+      publishTime: undefined
     });
 
     if (response.data && response.data.code === 200) {
@@ -1097,7 +1097,7 @@ const publishAssignment = async (isScheduled = false) => {
       assignment.value.publishTime = formatLocalDateTime(scheduledDateTime);
       showScheduleDialog.value = false;
     } else {
-      assignment.value.publishTime = formatLocalDateTime(new Date());
+      assignment.value.publishTime = undefined; // 后端会自动使用服务器当前时间
     }
 
     // 打印发送的数据

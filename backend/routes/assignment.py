@@ -103,9 +103,10 @@ def _calculate_teacher_assignment_status(assignment):
         if not assignment.publish_time:
             return 'published'
         
-        # 如果有发布时间，比较当前时间和发布时间
+        # 如果有发布时间，比较当前时间和发布时间，增加60秒的容差时间以防服务器与客户端存在细微时差
+        from datetime import timedelta
         current_time = datetime.now()
-        if current_time >= assignment.publish_time:
+        if current_time + timedelta(seconds=60) >= assignment.publish_time:
             return 'published'  # 已到发布时间
         else:
             return 'scheduled'  # 未到发布时间，显示为待发布

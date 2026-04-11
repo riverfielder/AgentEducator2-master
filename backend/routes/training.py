@@ -21,7 +21,8 @@ def generate_training():
     count = data.get('count', 3)
     
     prompt = f"""
-你是一个专业的编程导师。学生在掌握“{keyword_name}”这个知识点上存在薄弱环节。
+
+    学生在掌握“{keyword_name}”这个知识点上存在薄弱环节。
 请你实时为其动态生成一套专项训练题，包含不同题型。
 请严格输出JSON数组格式，不要包含任何markdown修饰符（如 ```json 等），严格只输出一层列表：
 [
